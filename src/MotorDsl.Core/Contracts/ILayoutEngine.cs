@@ -12,11 +12,12 @@ namespace MotorDsl.Core.Contracts;
 public interface ILayoutEngine
 {
     /// <summary>
-    /// Applies layout transformations to a document tree based on device profile.
-    /// This includes adjustments for width, wrapping, and other device-specific layout rules.
+    /// Applies layout transformations to an evaluated document based on device profile.
+    /// This includes adjustments for width, wrapping, alignment, and other device-specific layout rules.
+    /// Produces LayoutedDocument as intermediate representation.
     /// </summary>
-    /// <param name="document">Root document node</param>
+    /// <param name="document">Evaluated document from the Evaluator stage</param>
     /// <param name="profile">Device profile defining layout constraints (width, capabilities, etc.)</param>
-    /// <returns>Document node tree with applied layout rules</returns>
-    DocumentNode ApplyLayout(DocumentNode document, DeviceProfile profile);
+    /// <returns>LayoutedDocument with calculated positions and layout information for each node</returns>
+    LayoutedDocument ApplyLayout(EvaluatedDocument document, DeviceProfile profile);
 }

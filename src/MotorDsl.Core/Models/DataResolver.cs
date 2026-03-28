@@ -80,6 +80,13 @@ public class DataResolver : IDataResolver
         if (obj == null)
             return null;
 
+        // Si es IDictionary<string, object?> (ExpandoObject, etc.) → buscar key directamente
+        if (obj is IDictionary<string, object?> dict)
+        {
+            return dict.TryGetValue(propertyName, out var dictValue) ? dictValue : null;
+        }
+
+        // Si no → reflection como antes
         var type = obj.GetType();
         // Use IgnoreCase and Instance flags to find properties on anonymous types
         var property = type.GetProperty(propertyName, 

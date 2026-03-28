@@ -16,10 +16,11 @@ public interface IRenderer
     string Target { get; }
 
     /// <summary>
-    /// Renders an abstract document node tree to the target format.
+    /// Renders a layouted document to the target format.
+    /// Transforms LayoutedDocument (from Layout stage) to specific output format.
     /// </summary>
-    /// <param name="document">Root document node to render</param>
+    /// <param name="document">LayoutedDocument with calculated positions and layout information</param>
     /// <param name="profile">Device profile defining rendering constraints and capabilities</param>
     /// <returns>Render result containing the formatted output</returns>
-    RenderResult Render(DocumentNode document, DeviceProfile profile);
+    RenderResult Render(LayoutedDocument document, DeviceProfile profile);
 }
