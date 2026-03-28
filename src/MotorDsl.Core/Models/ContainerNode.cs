@@ -22,4 +22,15 @@ public class ContainerNode : DocumentNode
     {
         Layout = layout;
     }
+
+    /// <summary>
+    /// Constructor for container nodes with children.
+    /// </summary>
+    /// <param name="layout">Layout type (e.g., "vertical", "horizontal")</param>
+    /// <param name="children">Child nodes</param>
+    public ContainerNode(string? layout, List<DocumentNode> children) : base("container")
+    {
+        Layout = layout;
+        Children = children;
+    }
 }
