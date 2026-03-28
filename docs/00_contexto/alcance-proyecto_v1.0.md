@@ -82,7 +82,7 @@ El proyecto contempla:
 
 * Ambiente de desarrollo.
 * Ambiente de pruebas.
-* Integración en aplicaciones móviles .NET MAUI.
+* Integración en aplicaciones móviles .NET 10 MAUI.
 
 ---
 

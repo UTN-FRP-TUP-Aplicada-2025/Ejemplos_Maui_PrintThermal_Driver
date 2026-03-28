@@ -1,298 +1,311 @@
 # Decisiones de Arquitectura (ADR) — Sistema de Gestión de Reclamos  
+**Proyecto:** Motor DSL para generación y renderizado de documentos
 **Archivo:** decisiones-arquitectura_v1.0.md  
 **Versión:** 1.0  
 **Fecha:** 2026-03-02  
 **Autor:** Equipo Técnico  
 **Estado:** Activo  
+**Tipo:** Documento de decisiones arquitectónicas (ADR simplificado)
+**Objetivo:** Registrar decisiones clave de diseño, justificar alternativas y establecer lineamientos técnicos del sistema
 
 ---
 
-## 1. Propósito
+## 🎯 Propósito
 
-Este documento registra las decisiones arquitectónicas relevantes (Architecture Decision Records — ADR) tomadas para el Sistema de Gestión de Reclamos. Cada decisión incluye contexto, alternativas consideradas, decisión final y consecuencias.
+Documentar las decisiones arquitectónicas fundamentales que guían el diseño e implementación del motor DSL, asegurando:
 
-El objetivo es preservar la trazabilidad técnica y facilitar futuras evoluciones del sistema.
-
----
-
-# ADR-001 — Estilo arquitectónico
-
-## Estado  
-Aceptado
-
-## Contexto
-
-El sistema debe permitir evolución gradual, testing aislado de reglas de negocio y bajo acoplamiento entre componentes. Se espera crecimiento funcional en el tiempo.
-
-## Alternativas consideradas
-
-- Arquitectura en capas tradicional  
-- Clean Architecture  
-- Microservicios  
-
-## Decisión
-
-Se adopta **Clean Architecture con estructura en capas**.
-
-## Consecuencias
-
-**Positivas**
-
-- Separación clara de responsabilidades  
-- Reglas de negocio aisladas  
-- Mejor testabilidad  
-
-**Negativas**
-
-- Mayor complejidad inicial  
-- Más proyectos en la solución  
+- Consistencia en el desarrollo
+- Trazabilidad de decisiones
+- Facilidad de mantenimiento
+- Alineación entre componentes
+- Guía para herramientas de codificación asistida (Copilot)
 
 ---
 
-# ADR-002 — Tipo de frontend
+## 🧠 Principios arquitectónicos adoptados
 
-## Estado  
-Aceptado
+### 1. Separación de responsabilidades
 
-## Contexto
+Cada componente del sistema tiene una única responsabilidad:
 
-El sistema requiere aplicación móvil multiplataforma para ciudadanos con capacidad de crecimiento futuro.
-
-## Alternativas consideradas
-
-- Aplicación web responsive  
-- .NET MAUI  
-- Flutter  
-
-## Decisión
-
-Se selecciona **.NET MAUI con patrón MVVM**.
-
-## Consecuencias
-
-**Positivas**
-
-- Reutilización de código C#  
-- Integración con ecosistema .NET  
-- Soporte multiplataforma  
-
-**Negativas**
-
-- Curva de aprendizaje MVVM  
-- Dependencia del stack .NET  
+- Parser → interpreta DSL
+- Evaluator → aplica lógica
+- Renderer → genera salida
 
 ---
 
-# ADR-003 — Backend API
+### 2. Pipeline en etapas
 
-## Estado  
-Aceptado
+El sistema se diseña como un pipeline secuencial:
 
-## Contexto
+```text
+DSL → AST → EvaluatedDocument → RenderOutput
+````
 
-Se requiere exponer servicios REST para operaciones de reclamos con buena integración al frontend MAUI.
-
-## Alternativas consideradas
-
-- Node.js  
-- ASP.NET Web API  
-- Minimal APIs  
-
-## Decisión
-
-Se adopta **ASP.NET Web API (.NET 8)**.
-
-## Consecuencias
-
-**Positivas**
-
-- Ecosistema unificado  
-- Buen soporte de tooling  
-- Integración con EF Core  
-
-**Negativas**
-
-- Requiere hosting .NET  
-- Overhead frente a minimal APIs  
+Cada etapa produce una representación intermedia clara.
 
 ---
 
-# ADR-004 — Persistencia de datos
+### 3. AST como núcleo del sistema
 
-## Estado  
-Aceptado
+El Abstract Syntax Tree (AST) es la estructura central que representa el documento.
 
-## Contexto
+Decisión:
 
-El sistema necesita persistencia relacional confiable con soporte transaccional y facilidad de modelado.
-
-## Alternativas consideradas
-
-- SQL Server  
-- PostgreSQL  
-- MongoDB  
-
-## Decisión
-
-Se selecciona **SQL Server + Entity Framework Core**.
-
-## Consecuencias
-
-**Positivas**
-
-- Madurez tecnológica  
-- Buen soporte en .NET  
-- Consultas relacionales claras  
-
-**Negativas**
-
-- Menor flexibilidad que NoSQL  
-- Dependencia de motor relacional  
+* Todo el procesamiento gira en torno al AST
+* El AST es independiente de la salida final
 
 ---
 
-# ADR-005 — Estrategia de clasificación AI
+### 4. Uso de interfaces
 
-## Estado  
-Aceptado
+Se adoptan interfaces para desacoplar implementaciones:
 
-## Contexto
+* IParser
+* IEvaluator
+* IRenderer
+* IDataResolver
+* IProfileAdapter
 
-Se requiere clasificación semántica rápida sin construir inicialmente un modelo propio.
+Beneficio:
 
-## Alternativas consideradas
-
-- Reglas hardcodeadas  
-- Modelo ML propio  
-- LLM externo mediante prompt  
-
-## Decisión
-
-Se adopta **LLM externo con prompt versionado**.
-
-## Consecuencias
-
-**Positivas**
-
-- Implementación rápida  
-- Buena capacidad semántica  
-- Fácil evolución del prompt  
-
-**Negativas**
-
-- Dependencia externa  
-- Variabilidad del modelo  
-- Costo por uso  
+* Permite extensibilidad
+* Facilita testing
+* Permite múltiples implementaciones
 
 ---
 
-# ADR-006 — Comunicación entre capas
+### 5. Independencia entre etapas
 
-## Estado  
-Aceptado
+Cada etapa del pipeline no conoce detalles internos de las demás:
 
-## Contexto
-
-Se busca bajo acoplamiento entre aplicación, dominio e infraestructura.
-
-## Alternativas consideradas
-
-- Acceso directo a EF desde controllers  
-- Servicios de aplicación  
-- Mediator pattern  
-
-## Decisión
-
-Se utilizarán **servicios de aplicación con interfaces de repositorio**.
-
-## Consecuencias
-
-**Positivas**
-
-- Dominio desacoplado  
-- Mejor testabilidad  
-- Flexibilidad futura  
-
-**Negativas**
-
-- Más código boilerplate  
-- Curva de aprendizaje para el equipo  
+* Parser no conoce evaluación
+* Evaluator no conoce rendering
+* Renderer no conoce parsing
 
 ---
 
-# ADR-007 — Manejo de errores
+### 6. Modelo inmutable en evaluación
 
-## Estado  
-Aceptado
+El EvaluatedDocument se considera una representación derivada:
 
-## Contexto
-
-La API debe ser consistente y no exponer detalles internos.
-
-## Alternativas consideradas
-
-- Manejo por controller  
-- Middleware global  
-- Filtros de excepción  
-
-## Decisión
-
-Se implementará **middleware global de manejo de errores**.
-
-## Consecuencias
-
-**Positivas**
-
-- Respuestas uniformes  
-- Menos duplicación  
-- Mejor observabilidad  
-
-**Negativas**
-
-- Requiere disciplina en excepciones  
-- Debug inicial más complejo  
+* No modifica el AST original
+* Se genera como resultado de evaluación
+* Evita efectos colaterales
 
 ---
 
-# ADR-008 — Versionado de prompts
+## 🏗️ Decisiones técnicas clave
 
-## Estado  
-Aceptado
+### 1. Lenguaje y plataforma
 
-## Contexto
-
-La clasificación AI depende de prompts que evolucionarán.
-
-## Alternativas consideradas
-
-- Prompt hardcodeado  
-- Prompt en base de datos  
-- Prompt versionado en repositorio  
-
-## Decisión
-
-Se adopta **prompt versionado en repositorio**.
-
-## Consecuencias
-
-**Positivas**
-
-- Trazabilidad  
-- Reproducibilidad  
-- Control por Git  
-
-**Negativas**
-
-- Requiere disciplina de versionado  
-- Cambios implican deploy  
+* Tecnología: .NET (C#)
+* Tipo de proyecto: Class Libraries
+* Arquitectura: modular por proyectos
 
 ---
 
-## Historial de versiones
+### 2. Estructura de proyectos
 
-| Versión | Fecha | Autor | Cambios |
-|--------|------|------|---------|
-| 1.0 | 2026-03-02 | Equipo Técnico | ADR iniciales |
+Se define separación por capas:
+
+* MotorDsl.Core → modelos, AST, interfaces
+* MotorDsl.Parser → parsing DSL
+* MotorDsl.Evaluator → evaluación lógica
+* MotorDsl.Rendering → generación de salida
+* MotorDsl.Extensions → extensibilidad
 
 ---
+
+### 3. Representación del AST
+
+Decisión:
+
+* Se utiliza una jerarquía de clases
+
+Ejemplo conceptual:
+
+* Node (abstracto)
+
+  * DocumentNode
+  * TextNode
+  * ConditionalNode
+  * LoopNode
+
+Motivo:
+
+* Facilita extensibilidad
+* Permite composición jerárquica
+* Compatible con recorridos recursivos
+
+---
+
+### 4. DSL (lenguaje de plantillas)
+
+Decisión:
+
+* DSL textual interpretado (no compilado)
+* Parsing manual o basado en reglas
+
+Motivo:
+
+* Flexibilidad
+* Control total del parsing
+* Independencia de herramientas externas
+
+---
+
+### 5. Evaluación basada en contexto
+
+Se introduce DataContext:
+
+* Fuente de datos dinámica
+* Utilizada por el evaluator
+* Permite resolución de variables
+
+Motivo:
+
+* Desacoplar lógica del origen de datos
+* Permitir múltiples fuentes (API, DB, mocks)
+
+---
+
+### 6. Estrategia de rendering
+
+Decisión:
+
+* Renderer intercambiable por tipo de salida
+
+Tipos previstos:
+
+* ESC/POS
+* PDF
+* Texto plano (debug)
+* UI preview
+
+Motivo:
+
+* Permite múltiples outputs sin afectar lógica central
+
+---
+
+### 7. Manejo de condiciones
+
+Decisión:
+
+* Evaluación de condiciones en el evaluator
+* No en el parser
+
+Motivo:
+
+* Separación de parsing vs lógica
+* Mayor flexibilidad en expresiones
+
+---
+
+### 8. Iteraciones (loops)
+
+Decisión:
+
+* Expansión de loops durante la evaluación
+* Generación de múltiples nodos en EvaluatedDocument
+
+Motivo:
+
+* Evita lógica compleja en rendering
+* Mantiene coherencia en el modelo evaluado
+
+---
+
+## 🚫 Decisiones descartadas
+
+### ❌ Compilación del DSL
+
+No se compila a código intermedio.
+
+Motivo:
+
+* Complejidad innecesaria en esta etapa
+* Se prioriza interpretación dinámica
+
+---
+
+### ❌ Renderizado acoplado al evaluator
+
+Se evita que el evaluator genere salida directamente.
+
+Motivo:
+
+* Rompe separación de responsabilidades
+* Reduce extensibilidad
+
+---
+
+### ❌ Uso directo de templates rígidos sin AST
+
+No se trabaja con templates sin estructura intermedia.
+
+Motivo:
+
+* Dificulta evaluación de lógica compleja
+* Reduce capacidad de extensión
+
+---
+
+## 🔄 Evolución de decisiones
+
+Este documento puede evolucionar en versiones futuras:
+
+* Nuevos tipos de nodos
+* Nuevos renderers
+* Nuevas estrategias de evaluación
+* Optimización del pipeline
+* Introducción de caching o compilación intermedia
+
+Cada cambio significativo deberá registrarse como una nueva decisión o actualización.
+
+---
+
+## 🧩 Relación con otros documentos
+
+* modelo-ejecucion-logico_v1.0.md → define cómo se ejecuta el sistema
+* modelo-datos-logico_v1.0.md → define estructuras de datos
+* flujo-ejecucion-motor_v1.0.md → describe el flujo conceptual
+* contratos-del-motor_v1.0.md → define interfaces públicas
+* extensibilidad-motor_v1.0.md → define mecanismos de extensión
+
+---
+
+## 🎯 Impacto en desarrollo asistido por IA
+
+Este documento es clave para:
+
+* Guiar a Copilot en decisiones consistentes
+* Evitar divergencias en implementaciones
+* Establecer reglas claras de diseño
+* Mantener coherencia entre módulos
+
+Copilot debe respetar estas decisiones al generar código.
+
+---
+
+````
+
+---
+
+# 🧠 Cómo usar este documento con Copilot
+
+En la práctica:
+
+- Copilot no “lee” documentos automáticamente
+- Pero vos lo guiás con comentarios como:
+
+```csharp
+// Basado en decisiones-arquitectura_v1.0.md:
+// - Separación de responsabilidades
+// - AST como núcleo
+// - Evaluación desacoplada del rendering
+````
+
+👉 Eso condiciona mucho mejor las sugerencias.
 
