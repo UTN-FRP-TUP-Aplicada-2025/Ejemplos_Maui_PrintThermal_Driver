@@ -17,11 +17,13 @@ public class DocumentEngineTests
 {
     private IDocumentEngine CreateEngine()
     {
+        var registry = new RendererRegistry();
+        registry.Register(new TextRenderer());
         return new DocumentEngine(
             new DslParser(),
             new Evaluator(),
             new LayoutEngine(),
-            new TextRenderer()
+            registry
         );
     }
 

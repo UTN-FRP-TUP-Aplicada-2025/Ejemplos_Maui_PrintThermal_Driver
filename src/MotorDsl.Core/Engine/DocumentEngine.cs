@@ -13,17 +13,14 @@ public class DocumentEngine : IDocumentEngine
     private readonly IDslParser _parser;
     private readonly IEvaluator _evaluator;
     private readonly ILayoutEngine _layoutEngine;
-    private readonly Dictionary<string, IRenderer> _renderers;
+    private readonly IRendererRegistry _rendererRegistry;
 
-    public DocumentEngine(IDslParser parser, IEvaluator evaluator, ILayoutEngine layoutEngine, IRenderer defaultRenderer)
+    public DocumentEngine(IDslParser parser, IEvaluator evaluator, ILayoutEngine layoutEngine, IRendererRegistry rendererRegistry)
     {
         _parser = parser;
         _evaluator = evaluator;
         _layoutEngine = layoutEngine;
-        _renderers = new Dictionary<string, IRenderer>
-        {
-            [defaultRenderer.Target] = defaultRenderer
-        };
+        _rendererRegistry = rendererRegistry;
     }
 
     public RenderResult Render(string templateDsl, object data, DeviceProfile profile)
@@ -67,13 +64,7 @@ public class DocumentEngine : IDocumentEngine
 
     private IRenderer GetRenderer(string target)
     {
-        if (_renderers.TryGetValue(target, out var renderer))
-            return renderer;
-
-        // Default to text renderer
-        if (_renderers.TryGetValue("text", out var textRenderer))
-            return textRenderer;
-
-        throw new InvalidOperationException($"No renderer found for target: {target}");
+        return _rendererRegistry.GetRenderer(target)
+            ?? throw new InvalidOperationException($"No renderer found for target: {target}");
     }
 }
