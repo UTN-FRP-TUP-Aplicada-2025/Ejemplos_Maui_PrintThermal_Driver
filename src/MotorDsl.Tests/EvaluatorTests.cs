@@ -2,7 +2,7 @@ using Xunit;
 using MotorDsl.Core.Contracts;
 using MotorDsl.Core.Models;
 using MotorDsl.Core.Evaluators;
-using MotorDsl.Core.Parsers;
+using MotorDsl.Parser;
 
 namespace MotorDsl.Tests;
 

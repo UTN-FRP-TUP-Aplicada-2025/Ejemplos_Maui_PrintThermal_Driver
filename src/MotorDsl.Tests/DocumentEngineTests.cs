@@ -3,7 +3,7 @@ using MotorDsl.Core.Engine;
 using MotorDsl.Core.Evaluators;
 using MotorDsl.Core.Layout;
 using MotorDsl.Core.Models;
-using MotorDsl.Core.Parsers;
+using MotorDsl.Parser;
 using MotorDsl.Rendering;
 
 namespace MotorDsl.Tests;

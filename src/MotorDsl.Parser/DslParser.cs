@@ -2,7 +2,7 @@ using System.Text.Json;
 using MotorDsl.Core.Contracts;
 using MotorDsl.Core.Models;
 
-namespace MotorDsl.Core.Parsers;
+namespace MotorDsl.Parser;
 
 /// <summary>
 /// Implementation of IDslParser using System.Text.Json.
