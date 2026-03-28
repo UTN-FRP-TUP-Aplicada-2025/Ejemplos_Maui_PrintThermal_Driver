@@ -1,4 +1,3 @@
-```markdown id="dec-arq-001"
 # Decisiones de Arquitectura (ADR) — Sistema de Gestión de Reclamos  
 **Archivo:** decisiones-arquitectura_v1.0.md  
 **Versión:** 1.0  
@@ -296,4 +295,4 @@ Se adopta **prompt versionado en repositorio**.
 | 1.0 | 2026-03-02 | Equipo Técnico | ADR iniciales |
 
 ---
-```
+

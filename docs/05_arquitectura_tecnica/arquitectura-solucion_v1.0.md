@@ -1,5 +1,5 @@
 # Arquitectura de la Solución — Motor de Renderizado DSL  
-**Archivo:** arquitectura-motor-dsl_v1.0.md  
+**Archivo:** arquitectura-solucion_v1.0.md
 **Versión:** 1.0  
 **Fecha:** 2026-03-28  
 **Autor:** Equipo Técnico  

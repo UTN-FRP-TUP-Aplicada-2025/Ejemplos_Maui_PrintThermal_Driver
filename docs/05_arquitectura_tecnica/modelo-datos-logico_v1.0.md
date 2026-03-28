@@ -1,8 +1,7 @@
-````markdown id="mdl-log-001"
-# Modelo de Datos Lógico — Sistema de Gestión de Reclamos  
+# Modelo de Datos Lógico — Motor DSL de Renderizado  
 **Archivo:** modelo-datos-logico_v1.0.md  
 **Versión:** 1.0  
-**Fecha:** 2026-03-02  
+**Fecha:** 2026-03-28  
 **Autor:** Equipo Técnico  
 **Estado:** Borrador  
 
@@ -10,9 +9,17 @@
 
 ## 1. Propósito
 
-Este documento define el modelo de datos lógico derivado del modelo conceptual. Describe las tablas, campos, tipos de datos, claves primarias y relaciones necesarias para soportar los casos de uso del sistema.
+Este documento define el modelo de datos lógico del Motor DSL de renderizado. Describe las estructuras internas utilizadas para representar documentos, nodos del DSL, perfiles de dispositivo y resultados de renderizado.
 
-El modelo lógico está orientado a implementación en base de datos relacional, manteniendo trazabilidad con la especificación funcional y las reglas de negocio.
+A diferencia de un sistema transaccional tradicional, este modelo no está centrado en tablas relacionales estrictas, sino en estructuras orientadas a objetos que representan el árbol abstracto (AST) del documento.
+
+El objetivo es proporcionar una representación consistente que soporte:
+
+- Parsing de DSL
+- Evaluación de expresiones
+- Layout de contenido
+- Renderizado en múltiples targets
+- Extensibilidad del motor
 
 ---
 
@@ -20,231 +27,316 @@ El modelo lógico está orientado a implementación en base de datos relacional,
 
 El modelo cubre:
 
-- Registro de reclamos  
-- Estados del reclamo  
-- Historial de cambios  
-- Áreas responsables  
+- Representación abstracta de documentos (AST)
+- Nodos del DSL
+- Perfiles de dispositivo
+- Resultado de renderizado
+- Elementos estructurales del layout
 
-No incluye optimizaciones físicas ni índices avanzados, que se tratarán en el modelo físico.
+No incluye:
+
+- Persistencia en base de datos
+- Índices físicos
+- Optimización de almacenamiento
+- Infraestructura específica
 
 ---
 
 ## 3. Entidades principales
 
-El sistema se compone de las siguientes tablas:
+El sistema se compone de los siguientes conceptos lógicos:
 
-- Reclamo  
-- EstadoReclamo  
-- HistorialEstado  
-- Area  
+- DocumentTemplate  
+- DocumentNode (y derivados)  
+- DeviceProfile  
+- RenderResult  
+- Expresiones DSL  
+- Contexto de ejecución  
 
 ---
 
-## 4. Tabla: Area
+## 4. Documento: DocumentTemplate
 
-Representa las áreas municipales responsables.
+Representa una plantilla completa procesada desde DSL.
 
-### Estructura
+### Estructura lógica
 
 | Campo | Tipo | Nulo | Descripción |
 |------|------|------|------------|
-| AreaId | int (PK) | No | Identificador |
-| Nombre | varchar(100) | No | Nombre del área |
-| Activa | bit | No | Indicador de vigencia |
+| Id | string | No | Identificador de plantilla |
+| Version | string | No | Versión del documento |
+| Root | DocumentNode | No | Nodo raíz del árbol |
+| Metadata | Dictionary | Sí | Información adicional |
 
 ### Reglas
 
-- Nombre debe ser único.  
-- Deben existir áreas base del sistema.  
+- Root siempre debe existir  
+- Metadata es opcional y extensible  
+- Version permite control de compatibilidad  
 
 ---
 
-## 5. Tabla: EstadoReclamo
+## 5. Nodo base: DocumentNode
 
-Catálogo de estados posibles.
+Entidad abstracta que representa cualquier elemento del documento.
+
+### Estructura lógica
+
+| Campo | Tipo | Nulo | Descripción |
+|------|------|------|------------|
+| Type | string | No | Tipo de nodo |
+| Children | List<DocumentNode> | Sí | Hijos del nodo |
+| Properties | Dictionary | Sí | Propiedades dinámicas |
+| Style | StyleDefinition | Sí | Estilos aplicables |
+
+---
+
+### Tipos de nodos derivados
+
+- TextNode  
+- ContainerNode  
+- TableNode  
+- ConditionalNode  
+- LoopNode  
+- ImageNode  
+
+---
+
+## 6. Nodo: TextNode
+
+Representa contenido textual.
 
 ### Estructura
 
 | Campo | Tipo | Nulo | Descripción |
 |------|------|------|------------|
-| EstadoId | int (PK) | No | Identificador |
-| Nombre | varchar(50) | No | Nombre del estado |
-| Orden | int | No | Orden lógico |
-
-### Estados iniciales
-
-- Registrado  
-- Asignado  
-- En proceso  
-- Cerrado  
-
----
-
-## 6. Tabla: Reclamo
-
-Entidad principal del sistema.
-
-### Estructura
-
-| Campo | Tipo | Nulo | Descripción |
-|------|------|------|------------|
-| ReclamoId | bigint (PK) | No | Identificador interno |
-| NumeroReclamo | varchar(20) | No | Código público |
-| TipoReclamo | varchar(100) | No | Tipo declarado |
-| Descripcion | varchar(1000) | No | Texto del ciudadano |
-| Ubicacion | varchar(200) | Sí | Dirección |
-| MedioContacto | varchar(150) | No | Email o teléfono |
-| AreaId | int (FK) | No | Área asignada |
-| EstadoActualId | int (FK) | No | Estado actual |
-| FechaRegistro | datetime2 | No | Alta |
-| FechaUltimaActualizacion | datetime2 | No | Último cambio |
-| Activo | bit | No | Soft delete |
-
----
-
-### Claves
-
-- PK: ReclamoId  
-- UK: NumeroReclamo  
-- FK: AreaId → Area  
-- FK: EstadoActualId → EstadoReclamo  
-
----
-
-### Reglas de negocio asociadas
-
-- NumeroReclamo debe ser único.  
-- Estado inicial = Registrado.  
-- AreaId se asigna por RN-01.  
-- Descripcion mínimo 10 caracteres.  
-
----
-
-## 7. Tabla: HistorialEstado
-
-Registra la trazabilidad del reclamo.
-
-### Estructura
-
-| Campo | Tipo | Nulo | Descripción |
-|------|------|------|------------|
-| HistorialId | bigint (PK) | No | Identificador |
-| ReclamoId | bigint (FK) | No | Reclamo |
-| EstadoId | int (FK) | No | Estado |
-| FechaCambio | datetime2 | No | Momento |
-| Observaciones | varchar(500) | Sí | Comentario |
-| UsuarioSistema | varchar(100) | Sí | Origen |
-
----
-
-### Claves
-
-- PK: HistorialId  
-- FK: ReclamoId → Reclamo  
-- FK: EstadoId → EstadoReclamo  
-
----
+| Text | string | No | Texto a renderizar |
+| BindPath | string | Sí | Path a datos dinámicos |
 
 ### Reglas
 
-- Debe existir registro al crear el reclamo.  
-- Debe mantenerse orden cronológico.  
+- Puede contener interpolación de datos  
+- Puede ser estático o dinámico  
 
 ---
 
-## 8. Relaciones
+## 7. Nodo: ContainerNode
 
-```text
-Area (1) ───── (N) Reclamo
-EstadoReclamo (1) ───── (N) Reclamo
-Reclamo (1) ───── (N) HistorialEstado
-EstadoReclamo (1) ───── (N) HistorialEstado
+Contenedor estructural.
+
+### Estructura
+
+| Campo | Tipo | Nulo | Descripción |
+|------|------|------|------------|
+| Layout | string | Sí | Tipo de layout (vertical, horizontal) |
+| Children | List<DocumentNode> | No | Elementos contenidos |
+
+### Reglas
+
+- Organiza el flujo visual  
+- No tiene contenido directo  
+
+---
+
+## 8. Nodo: ConditionalNode
+
+Permite lógica condicional.
+
+### Estructura
+
+| Campo | Tipo | Nulo | Descripción |
+|------|------|------|------------|
+| Expression | string | No | Expresión DSL |
+| TrueBranch | DocumentNode | No | Nodo si verdadero |
+| FalseBranch | DocumentNode | Sí | Nodo alternativo |
+
+### Reglas
+
+- Expression debe evaluarse en runtime  
+- Soporta variables del contexto de datos  
+
+---
+
+## 9. Nodo: LoopNode
+
+Permite iteración sobre colecciones.
+
+### Estructura
+
+| Campo | Tipo | Nulo | Descripción |
+|------|------|------|------------|
+| Source | string | No | Path a colección |
+| ItemAlias | string | No | Alias del elemento |
+| Body | DocumentNode | No | Contenido iterado |
+
+### Reglas
+
+- Source debe resolver a una colección  
+- ItemAlias se usa en bindings internos  
+
+---
+
+## 10. Perfil de dispositivo: DeviceProfile
+
+Define capacidades del dispositivo de renderizado.
+
+### Estructura lógica
+
+| Campo | Tipo | Nulo | Descripción |
+|------|------|------|------------|
+| Name | string | No | Nombre del perfil |
+| Width | int | No | Ancho disponible |
+| RenderTarget | string | No | Tipo de salida |
+| Capabilities | Dictionary | Sí | Capacidades específicas |
+
+### RenderTargets posibles
+
+- escpos  
+- ui  
+- pdf  
+- text  
+- image  
+
+---
+
+## 11. Resultado de renderizado: RenderResult
+
+Representa la salida del motor.
+
+### Estructura lógica
+
+| Campo | Tipo | Nulo | Descripción |
+|------|------|------|------------|
+| Target | string | No | Tipo de salida |
+| Output | object | No | Resultado generado |
+| Warnings | List<string> | Sí | Advertencias |
+| Errors | List<string> | Sí | Errores |
+
+### Reglas
+
+- Output depende del renderer  
+- Puede contener texto, bytes o estructuras UI  
+
+---
+
+## 12. Expresiones DSL
+
+Las expresiones permiten lógica dinámica dentro del documento.
+
+### Tipos de uso
+
+- Condiciones (ConditionalNode)  
+- Iteraciones (LoopNode)  
+- Binding de datos (TextNode)  
+
+### Características
+
+- Evaluadas en runtime  
+- Acceden al contexto de datos  
+- Sintaxis definida por el parser DSL  
+
+---
+
+## 13. Contexto de ejecución
+
+Representa el entorno durante el renderizado.
+
+### Contenido
+
+- Datos de entrada (object)  
+- Variables temporales  
+- Resultado de evaluaciones intermedias  
+
+---
+
+## 14. Relaciones
+
+```text id="relaciones-001"
+DocumentTemplate
+    └── Root → DocumentNode (árbol jerárquico)
+
+DocumentNode
+    ├── Children → DocumentNode*
+    ├── Style → StyleDefinition
+    └── Properties → Dictionary
+
+ConditionalNode
+    ├── TrueBranch → DocumentNode
+    └── FalseBranch → DocumentNode
+
+LoopNode
+    └── Body → DocumentNode
+
+DeviceProfile
+    └── influye en → Layout + Renderer
+
+RenderResult
+    └── resultado de → IDocumentEngine
 ````
 
 ---
 
-## 9. Consideraciones de integridad
+## 15. Consideraciones de integridad lógica
 
-### Integridad referencial
-
-* Todas las FK con restricción ON DELETE NO ACTION.
-* No se permite borrar áreas en uso.
-
-### Consistencia temporal
-
-* FechaUltimaActualizacion debe actualizarse en cada cambio.
-* HistorialEstado es la fuente de verdad del flujo.
+* El árbol de DocumentNode no debe contener ciclos
+* Root es único por DocumentTemplate
+* ConditionalNode debe tener al menos una rama válida
+* LoopNode debe referenciar una colección existente
+* DeviceProfile debe ser consistente con el renderer seleccionado
 
 ---
 
-## 10. Consideraciones de performance (iniciales)
+## 16. Consideraciones de extensibilidad
 
-* Índice único en NumeroReclamo
-* Índice en Reclamo.AreaId
-* Índice en Reclamo.EstadoActualId
-* Índice en HistorialEstado.ReclamoId
+El modelo está diseñado para permitir:
 
-Optimizaciones adicionales se evaluarán según métricas reales.
-
----
-
-## 11. Datos semilla requeridos
-
-### Áreas iniciales
-
-* Rentas
-* Sistemas
-* Servicios Públicos
-* Atención al Vecino
-
-### Estados iniciales
-
-* Registrado
-* Asignado
-* En proceso
-* Cerrado
+* Nuevos tipos de nodos sin modificar los existentes
+* Nuevas propiedades dinámicas mediante Dictionary
+* Incorporación de nuevos targets de renderizado
+* Extensión del sistema de expresiones DSL
 
 ---
 
-## 12. Trazabilidad
+## 17. Trazabilidad
 
 Este modelo deriva de:
 
-* modelo-conceptual_v1.0.md
-* CU-01-registrar-reclamo
-* CU-02-consultar-estado
-* RN-01-asignacion-automatica
-* contratos-api_v1.0.md
+* arquitectura-solucion_v1.0.md
+* contratos-del-motor_v1.0.md
+* CU relacionados al renderizado
+* RN-02 independencia del render
+* RC-04 elementos soportados por el motor
+* RC-05 independencia del documento abstracto
+* RC-06 perfil de dispositivo
 
 ---
 
-## 13. Riesgos conocidos
+## 18. Riesgos conocidos
 
-* Crecimiento del historial puede requerir particionado futuro.
-* TipoReclamo podría normalizarse en versiones futuras.
-* Posible necesidad de multi-tenant.
+* Complejidad creciente del AST con DSL avanzado
+* Evaluación de expresiones puede impactar performance
+* Necesidad de validación estricta del árbol
+* Posible sobreextensión del modelo dinámico (Dictionary)
 
 ---
 
-## 14. Evolución prevista
+## 19. Evolución prevista
 
 Posibles extensiones:
 
-* Tabla Usuario
-* Tabla Adjuntos
-* Geolocalización
-* SLA por área
-* Prioridad del reclamo
+* Nodo de tablas avanzado con estilos complejos
+* Nodo de componentes reutilizables (partials)
+* Sistema de macros o includes
+* Tipado fuerte de expresiones DSL
+* Caché de evaluación de nodos
+* Optimización del AST (pruning / pre-evaluación)
 
 ---
 
-## 15. Historial de versiones
+## 20. Historial de versiones
 
 | Versión | Fecha      | Autor          | Cambios               |
 | ------- | ---------- | -------------- | --------------------- |
-| 1.0     | 2026-03-02 | Equipo Técnico | Modelo lógico inicial |
+| 1.0     | 2026-03-28 | Equipo Técnico | Modelo lógico inicial |
 
 ---
-
-```
-```

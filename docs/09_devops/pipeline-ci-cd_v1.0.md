@@ -1,4 +1,5 @@
 # Pipeline CI/CD  
+**Archivo:** pipeline-ci-cd_v1.0.md
 **Proyecto:** Reclamos Ciudadanos  
 **Versión:** v1.0  
 **Estado:** Aprobado  
@@ -315,5 +316,3 @@ Planeado para v2.x:
 | v1.0    | 2026-03-02 | DevOps | Definición inicial del pipeline |
 
 ---
-
-```

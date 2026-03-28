@@ -1,259 +1,298 @@
-# Estrategia de Versionado  
-**Proyecto:** Reclamos Ciudadanos  
+# Entornos de Deploy  
+**Archivo:** entornos-deploy_v1.0.md  
+**Proyecto:** Motor DSL (Librería de Generación de Documentos)  
 **Versión:** v1.0  
 **Estado:** Aprobado  
-**Fecha:** 2026-03-02  
+**Fecha:** 2026-03-28  
 **Owner:** Arquitectura / DevOps  
 
 ---
 
 ## 1. Propósito
 
-Este documento define la estrategia de versionado del sistema Reclamos Ciudadanos, incluyendo reglas para numeración de versiones, versionado de artefactos, control de cambios y etiquetado de releases. El objetivo es asegurar trazabilidad, reproducibilidad de builds y control de evolución del producto.
+Este documento define los entornos de despliegue del motor DSL, sus responsabilidades, configuraciones generales y reglas de promoción entre ambientes. El objetivo es asegurar consistencia, aislamiento, trazabilidad y calidad en el ciclo de entrega continua de la librería y sus componentes asociados.
 
 ---
 
-## 2. Alcance
+## 2. Estrategia general
 
-Aplica a:
+El sistema adopta una estrategia de despliegue progresivo por entornos, donde cada cambio atraviesa validaciones crecientes antes de llegar a producción.
 
-- Código fuente  
-- APIs  
-- Base de datos  
-- Artefactos de documentación  
-- Releases del producto  
+Flujo de promoción:
 
-No aplica a:
+```text
+DEV → QA → STAGING (opcional) → PROD
+````
 
-- Versiones internas de librerías externas  
-- Versiones locales de desarrollo no publicadas  
+Cada entorno cumple un rol específico dentro del ciclo de validación del motor, sus extensiones y sus artefactos.
 
 ---
 
-## 3. Esquema de versionado
+## 3. Entorno de Desarrollo (DEV)
 
-El proyecto adopta **Semantic Versioning (SemVer)**.
+### 3.1 Propósito
+
+Permitir a los desarrolladores del motor construir, probar y validar nuevas funcionalidades del DSL, renderizadores y extensiones de manera ágil.
+
+### 3.2 Características
+
+* Deploy frecuente (por commit o merge)
+* Datos de prueba / ejemplos DSL
+* Logging detallado
+* Debug habilitado
+* Configuración flexible
+* Entorno no estable
+
+### 3.3 Uso principal
+
+* Desarrollo de nuevas capacidades del motor
+* Validación de nodos DSL
+* Pruebas de renderizado
+* Integración de extensiones
+
+### 3.4 Responsables
+
+* Equipo de desarrollo del motor
+
+---
+
+## 4. Entorno de QA / Testing
+
+### 4.1 Propósito
+
+Validar el comportamiento funcional del motor DSL contra especificaciones, casos de uso y criterios de validación.
+
+### 4.2 Características
+
+* Deploy por versión o feature
+* Datos controlados
+* Logging moderado
+* Configuración cercana a producción
+* Acceso restringido
+
+### 4.3 Uso principal
+
+* Validación de casos de prueba
+* Ejecución de pruebas funcionales del DSL
+* Validación de renderizadores
+* Verificación de extensiones
+
+### 4.4 Responsables
+
+* QA
+* Desarrollo (soporte)
+
+---
+
+## 5. Entorno de Staging / Preproducción
+
+> Estado opcional en v1.0 — recomendado para evolución futura
+
+### 5.1 Propósito
+
+Simular un entorno equivalente a producción para validar releases del motor antes de su publicación.
+
+### 5.2 Características
+
+* Configuración idéntica a producción
+* Versiones específicas del motor
+* Datos anonimizados o representativos
+* Logging productivo
+* Seguridad completa habilitada
+* Alta estabilidad requerida
+
+### 5.3 Uso principal
+
+* Smoke tests de release del motor
+* Validación de artefactos publicados
+* Pruebas de integración completas
+* Validación de compatibilidad de extensiones
+
+### 5.4 Responsables
+
+* DevOps
+* QA
+* Arquitectura
+
+---
+
+## 6. Entorno de Producción (PROD)
+
+### 6.1 Propósito
+
+Publicar versiones estables del motor DSL como librería consumible (paquete NuGet o equivalente) y/o servicios asociados.
+
+### 6.2 Características
+
+* Alta disponibilidad (si aplica como servicio)
+* Logging controlado
+* Monitoreo activo
+* Seguridad reforzada
+* Versiones inmutables
+
+### 6.3 Reglas
+
+* Solo versiones aprobadas pueden publicarse
+* Requiere pipeline CI/CD exitoso
+* Requiere versionado SemVer
+* Cada release debe estar etiquetado
+
+### 6.4 Responsables
+
+* DevOps
+* Arquitectura
+* Mantenimiento de plataforma
+
+---
+
+## 7. Configuración por entorno
+
+| Configuración     | DEV    | QA    | STAGING | PROD       |
+| ----------------- | ------ | ----- | ------- | ---------- |
+| Debug             | Sí     | No    | No      | No         |
+| Logging           | Alto   | Medio | Medio   | Bajo       |
+| Datos reales      | No     | No    | Parcial | Sí         |
+| Deploy automático | Sí     | Sí    | Parcial | Controlado |
+| Monitoreo         | Básico | Medio | Alto    | Completo   |
+
+---
+
+## 8. Gestión de configuración
+
+Cada entorno debe definir su configuración mediante variables externas.
+
+### Reglas
+
+* No hardcodear configuraciones en el motor
+* Usar variables de entorno o archivos de configuración externos
+* Separar configuración de código y de DSL
+
+### Ejemplos de variables
+
+* ENVIRONMENT
+* LOG_LEVEL
+* RENDER_MODE
+* ENABLE_EXTENSIONS
+* CACHE_SETTINGS
+
+---
+
+## 9. Estrategia de versionado
 
 Formato:
 
 ```text
 MAJOR.MINOR.PATCH
-````
-
-### Significado
-
-* **MAJOR** → cambios incompatibles
-* **MINOR** → nuevas funcionalidades compatibles
-* **PATCH** → correcciones de errores
-
----
-
-## 4. Reglas de incremento
-
-### 4.1 Incremento MAJOR
-
-Se incrementa cuando:
-
-* Cambia el contrato de API de forma incompatible
-* Se rompe compatibilidad de datos
-* Cambia comportamiento funcional crítico
-
-**Ejemplo**
-
-* 1.0.0 → 2.0.0
-* Eliminación de un campo obligatorio en la API
-
----
-
-### 4.2 Incremento MINOR
-
-Se incrementa cuando:
-
-* Se agrega funcionalidad nueva compatible
-* Se agregan endpoints nuevos
-* Se agregan campos opcionales
-
-**Ejemplo**
-
-* 1.0.0 → 1.1.0
-* Nuevo endpoint de consulta avanzada
-
----
-
-### 4.3 Incremento PATCH
-
-Se incrementa cuando:
-
-* Se corrigen bugs
-* Se mejora performance sin cambiar contrato
-* Se corrigen validaciones
-
-**Ejemplo**
-
-* 1.1.0 → 1.1.1
-* Corrección en asignación automática
-
----
-
-## 5. Versionado de documentación
-
-Los documentos Markdown del repositorio se versionan en el nombre del archivo.
-
-Formato:
-
-```text
-<nombre>_vX.Y.md
 ```
 
-**Ejemplos**
+Ejemplos:
 
-* especificacion-funcional_v1.0.md
-* CU-01-registrar-reclamo_v1.1.md
-* prompt-clasificacion-reclamo_v1.1.md
+* 1.0.0 → release inicial del motor
+* 1.1.0 → nuevas capacidades DSL o renderizado
+* 1.1.1 → correcciones
 
 ### Reglas
 
-* Cambios menores → mismo major/minor
-* Cambios funcionales → subir MINOR
-* Cambios estructurales grandes → subir MAJOR
+* Cada deploy a QA debe estar asociado a una versión
+* Cada release a PROD debe estar versionado y taggeado
+* No se permiten versiones no trazables en producción
 
 ---
 
-## 6. Versionado de API
+## 10. Promoción entre entornos
 
-### 6.1 Estrategia
+### Flujo obligatorio
 
-La API se versiona por URL.
+1. Merge a rama principal
+2. Ejecución del pipeline CI/CD
+3. Deploy automático a DEV
+4. Validación técnica
+5. Promoción a QA
+6. Validación funcional
+7. Promoción a STAGING (si aplica)
+8. Aprobación final
+9. Publicación en PROD
 
-Formato:
+### Criterios de promoción
 
-```text
-/api/v{version}/reclamos
-```
-
-**Ejemplos**
-
-* /api/v1/reclamos
-* /api/v2/reclamos
-
-### 6.2 Reglas
-
-* Cambios incompatibles → nueva versión de API
-* Cambios compatibles → misma versión
-* Nunca romper clientes existentes
-
----
-
-## 7. Versionado de base de datos
-
-### 7.1 Estrategia
-
-Se utilizan migraciones versionadas e inmutables.
-
-Formato sugerido:
-
-```text
-V{numero}__descripcion.sql
-```
-
-**Ejemplos**
-
-* V1__crear_tabla_reclamos.sql
-* V2__agregar_indice_tipo.sql
-* V3__agregar_campo_estado.sql
-
-### 7.2 Reglas
-
-* Nunca modificar migraciones aplicadas
-* Siempre agregar nuevas migraciones
-* Scripts reversibles cuando sea posible
+* Build exitoso
+* Tests en verde
+* Validaciones de DSL correctas
+* Casos de prueba aprobados
+* Sin defectos críticos
 
 ---
 
-## 8. Versionado de releases
+## 11. Estrategia de despliegue
 
-Cada release productiva debe:
-
-* Tener tag en repositorio
-* Tener build reproducible
-* Tener changelog asociado
-* Estar desplegada en producción
-
-### Formato de tag
-
-```text
-vMAJOR.MINOR.PATCH
-```
-
-**Ejemplos**
-
-* v1.0.0
-* v1.1.0
-* v1.1.1
+* Artefactos inmutables por versión
+* Publicación versionada (ej: NuGet)
+* Separación entre build y deploy
+* Deploy automatizado vía CI/CD
 
 ---
 
-## 9. Branching strategy (simplificada)
+## 12. Rollback
 
-Estrategia recomendada:
+### Estrategia
 
-```text
-main
- └── develop
-      ├── feature/*
-      ├── bugfix/*
-      └── hotfix/*
-```
+* Mantener versiones anteriores del motor disponibles
+* Posibilidad de volver a una versión previa
+* Control de compatibilidad con extensiones
 
-### Reglas
+### Cuándo aplicar
 
-* `feature/*` → nuevas funcionalidades
-* `bugfix/*` → correcciones normales
-* `hotfix/*` → correcciones urgentes en PROD
-* `main` siempre deployable
+* Fallos críticos en renderizado
+* Incompatibilidad DSL
+* Errores en nuevas versiones
+* Problemas de integración con extensiones
 
 ---
 
-## 10. Control de cambios
+## 13. Observabilidad por entorno
 
-Cada versión debe registrar:
+Se recomienda progresivamente:
 
-* funcionalidades nuevas
-* bugs corregidos
-* cambios breaking
-* migraciones asociadas
-
-Se recomienda mantener un **CHANGELOG.md**.
-
----
-
-## 11. Ejemplo completo de evolución
-
-```text
-v1.0.0  → release inicial
-v1.1.0  → agrega consulta de estado
-v1.1.1  → corrige validación de descripción
-v2.0.0  → cambia contrato de API
-```
+* Logs estructurados
+* Métricas del motor (tiempo de render, errores)
+* Health checks
+* Trazabilidad de ejecución DSL
+* Alertas en producción
 
 ---
 
-## 12. Riesgos y mitigaciones
+## 14. Seguridad por entorno
 
-| Riesgo                   | Impacto | Mitigación          |
-| ------------------------ | ------- | ------------------- |
-| Versionado inconsistente | Alta    | reglas SemVer       |
-| Cambios breaking ocultos | Alta    | revisión de API     |
-| Migraciones manuales     | Alta    | scripts versionados |
+* DEV: accesos amplios controlados
+* QA: accesos restringidos
+* STAGING: accesos limitados
+* PROD: accesos estrictamente controlados
 
----
+Incluye:
 
-## 13. Control de cambios del documento
-
-| Versión | Fecha      | Autor        | Descripción        |
-| ------- | ---------- | ------------ | ------------------ |
-| v1.0    | 2026-03-02 | Arquitectura | Definición inicial |
+* Gestión de secretos
+* Control de dependencias externas
+* Validación de inputs DSL
+* Protección contra ejecución no segura
 
 ---
 
-```
+## 15. Riesgos
+
+| Riesgo                     | Impacto | Mitigación                    |
+| -------------------------- | ------- | ----------------------------- |
+| Diferencias entre entornos | Alta    | Configuración por entorno     |
+| Incompatibilidad DSL       | Alta    | versionado SemVer + tests     |
+| Extensiones incompatibles  | Alta    | contratos y versionado        |
+| Deploy manual              | Alta    | automatización CI/CD          |
+| Falta de trazabilidad      | Alta    | tags + versionado obligatorio |
+
+---
+
+## 16. Control de cambios
+
+| Versión | Fecha      | Autor  | Descripción                    |
+| ------- | ---------- | ------ | ------------------------------ |
+| v1.0    | 2026-03-28 | DevOps | Definición inicial de entornos |
+
+---

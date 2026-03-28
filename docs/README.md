@@ -1,65 +1,70 @@
-# 🏛️ Reclamos Ciudadanos
+# 🧠 Motor DSL de Generación de Documentos
 
-Sistema integral para la gestión digital de reclamos ciudadanos, construido con **.NET 10**, **ASP.NET Core REST API**, **.NET MAUI** y **SQL Server**.
+Sistema de generación y procesamiento de documentos basado en un motor DSL (Domain Specific Language), diseñado para interpretar plantillas, aplicar reglas de negocio y renderizar salidas estructuradas.
 
-El objetivo del proyecto es centralizar la recepción, clasificación automática y seguimiento de reclamos, proporcionando trazabilidad y eficiencia operativa para organismos municipales.
+Construido con **.NET 10**, orientado a arquitectura extensible, versionado semántico y ejecución determinística.
 
 ---
 
 ## 📌 Descripción
 
-Reclamos Ciudadanos es una solución compuesta por:
+El Motor DSL es una librería y conjunto de componentes que permiten:
 
-- Backend REST para gestión de reclamos  
-- Motor de reglas para asignación automática  
-- Aplicación cliente en .NET MAUI  
-- Base de datos relacional en SQL Server  
-- Pipeline CI/CD automatizado  
+- Definir documentos mediante un lenguaje DSL estructurado  
+- Interpretar nodos y expresiones  
+- Aplicar reglas de negocio y evaluación dinámica  
+- Renderizar documentos en múltiples formatos  
+- Extender funcionalidades mediante plugins  
+- Versionar y mantener compatibilidad entre cambios  
 
-El repositorio incluye documentación funcional, técnica y artefactos necesarios para construir y desplegar el sistema.
+El repositorio incluye documentación técnica, especificaciones del DSL, reglas de validación, pruebas y guías de extensibilidad.
 
 ---
 
 ## 🎯 Objetivos del producto
 
-- Digitalizar la recepción de reclamos  
-- Automatizar la asignación de áreas  
-- Permitir seguimiento del estado  
-- Reducir tiempos de atención  
-- Proveer trazabilidad completa  
+- Definir un lenguaje DSL flexible y extensible  
+- Permitir generación de documentos parametrizados  
+- Separar contenido, lógica y presentación  
+- Facilitar reutilización de plantillas  
+- Garantizar trazabilidad y versionado  
+- Soportar evolución del DSL sin romper compatibilidad  
 
 ---
 
 ## 🧱 Stack tecnológico
 
-**Backend**
+**Core**
 
 - .NET 10  
-- ASP.NET Core Web API  
-- Entity Framework Core  
-- SQL Server  
+- C#  
+- Arquitectura modular / orientada a componentes  
 
-**Cliente**
+**Procesamiento**
 
-- .NET MAUI  
+- Evaluación de expresiones  
+- Motor de reglas  
+- Renderizado de documentos  
 
 **DevOps**
 
 - Git  
 - Pipeline CI/CD  
-- Containerización (opcional)
+- Versionado SemVer  
+- Publicación de paquetes (NuGet o equivalente)  
 
 ---
 
 ## 🏗️ Arquitectura (resumen)
 
-El sistema adopta una arquitectura en capas:
+El sistema se organiza en capas y componentes desacoplados:
 
-- API REST desacoplada  
-- Dominio con reglas de negocio  
-- Persistencia mediante EF Core  
-- Cliente móvil MAUI  
-- Versionado semántico  
+- Núcleo del motor (interpretación DSL)  
+- Evaluador de expresiones  
+- Renderizadores  
+- Sistema de extensiones/plugins  
+- Capa de validación  
+- Contratos de entrada/salida  
 
 📄 Ver detalle:
 
@@ -84,19 +89,18 @@ El sistema adopta una arquitectura en capas:
   08_calidad_y_pruebas
   09_devops
 
-/src        (código fuente)
+/src        (código fuente del motor DSL)
 /tests      (pruebas automatizadas)
 ```
 
 ---
 
-## 🚀 Cómo ejecutar el backend
+## 🚀 Cómo ejecutar el motor
 
 ### Prerrequisitos
 
 * .NET 10 SDK
-* SQL Server
-* Visual Studio / VS Code
+* Entorno de desarrollo (Visual Studio / VS Code)
 
 ---
 
@@ -104,50 +108,28 @@ El sistema adopta una arquitectura en capas:
 
 ```bash
 git clone <repo-url>
-cd Reclamos_Ciudadanos
+cd Motor_DSL
 ```
 
 ---
 
-### 2. Configurar variables de entorno
-
-Ejemplo:
-
-```bash
-ASPNETCORE_ENVIRONMENT=Development
-ConnectionStrings__DefaultConnection=<cadena-sqlserver>
-```
-
----
-
-### 3. Ejecutar API
+### 2. Restaurar dependencias
 
 ```bash
 dotnet restore
-dotnet build
-dotnet run --project src/Reclamos.Api
-```
-
-API disponible en:
-
-```text
-http://localhost:5000
 ```
 
 ---
 
-## 📱 Ejecutar cliente MAUI
+### 3. Compilar solución
 
 ```bash
-dotnet build src/Reclamos.Maui
-dotnet maui run
+dotnet build
 ```
-
-> Requiere workloads MAUI instalados.
 
 ---
 
-## 🧪 Ejecutar pruebas
+### 4. Ejecutar pruebas
 
 ```bash
 dotnet test
@@ -157,24 +139,89 @@ dotnet test
 
 ---
 
-## 🔌 Endpoints principales
+## 🧪 Ejecución conceptual del motor
 
-### Registrar reclamo
-
-```http
-POST /api/v1/reclamos
-```
-
-### Consultar estado
-
-```http
-GET /api/v1/reclamos/{id}
-```
-
-📄 Ver contratos completos:
+El motor procesa una entrada DSL siguiendo este flujo:
 
 ```text
-/docs/05_arquitectura_tecnica/contratos-api_v1.0.md
+DSL → Parseo → Validación → Evaluación → Render → Output
+```
+
+Componentes involucrados:
+
+* Parser DSL
+* Validator
+* Evaluador de nodos
+* Motor de reglas
+* Renderizador
+
+---
+
+## 🔌 Conceptos principales
+
+### DSL
+
+Lenguaje estructurado que define:
+
+* Estructura del documento
+* Nodos lógicos
+* Expresiones
+* Reglas de composición
+
+📄 Ver detalle:
+
+```text
+/docs/02_especificacion_funcional/definicion-dsl_v1.0.md
+```
+
+---
+
+### Nodos
+
+Elementos básicos del DSL que representan:
+
+* Texto
+* Condiciones
+* Repeticiones
+* Expresiones
+* Componentes compuestos
+
+---
+
+### Evaluador
+
+Encargado de:
+
+* Resolver expresiones
+* Ejecutar lógica condicional
+* Interpretar contexto de ejecución
+
+---
+
+### Renderizadores
+
+Transforman el modelo interpretado en una salida concreta:
+
+* Texto plano
+* HTML
+* PDF
+* Otros formatos extensibles
+
+---
+
+### Extensiones
+
+Permiten ampliar el motor mediante:
+
+* Nuevos nodos
+* Funciones personalizadas
+* Evaluadores adicionales
+* Renderizadores específicos
+
+📄 Ver detalle:
+
+```text
+/docs/05_arquitectura_tecnica/guia-extensibilidad_v1.0.md
 ```
 
 ---
@@ -182,24 +229,26 @@ GET /api/v1/reclamos/{id}
 ## 🔄 Flujo de desarrollo
 
 1. Crear branch `feature/*`
-2. Implementar
-3. Agregar tests
-4. Crear Pull Request
-5. Pipeline CI en verde
-6. Merge a main
-7. Deploy automático a DEV
+2. Implementar cambios en motor / DSL
+3. Agregar pruebas unitarias
+4. Ejecutar validaciones
+5. Crear Pull Request
+6. Pipeline CI en verde
+7. Merge a `main`
+8. Generación de versión
 
 ---
 
 ## ✅ Definition of Done
 
-Una historia se considera completa cuando:
+Una funcionalidad se considera completa cuando:
 
-* Código compila
+* Código compila correctamente
 * Tests pasan
 * Cobertura ≥ 70%
-* PR aprobado
+* Validaciones DSL exitosas
 * Documentación actualizada
+* PR aprobado
 
 📄 Ver detalle:
 
@@ -211,9 +260,50 @@ Una historia se considera completa cuando:
 
 ## 🧭 Roadmap (alto nivel)
 
-* v1.1 — mejoras de clasificación
-* v1.2 — notificaciones
-* v2.0 — funcionalidades avanzadas
+* v1.1 — mejoras en evaluador de expresiones
+* v1.2 — nuevos renderizadores
+* v1.3 — optimización de performance
+* v2.0 — evolución del DSL (breaking changes)
+
+---
+
+## 🧪 Calidad y testing
+
+El proyecto incluye:
+
+* Casos de prueba referenciales
+* Matriz de cobertura
+* Validaciones del motor
+* Estrategias de testing automatizado
+
+📄 Ver documentación:
+
+```text
+/docs/08_calidad_y_pruebas/
+```
+
+---
+
+## 🚀 DevOps
+
+El proyecto cuenta con estrategia de:
+
+* Pipeline CI/CD
+* Versionado SemVer
+* Entornos de despliegue
+* Promoción entre ambientes
+
+📄 Ver documentación:
+
+```text
+/docs/09_devops/
+```
+
+Incluye:
+
+* pipeline-ci-cd_v1.0.md
+* estrategia-versionado_v1.0.md
+* entornos-deploy_v1.0.md
 
 ---
 
@@ -221,9 +311,10 @@ Una historia se considera completa cuando:
 
 1. Fork del repositorio
 2. Crear branch descriptivo
-3. Seguir convenciones del proyecto
-4. Asegurar tests en verde
-5. Crear Pull Request
+3. Implementar cambios
+4. Agregar pruebas
+5. Asegurar validaciones en verde
+6. Crear Pull Request
 
 ---
 
@@ -235,8 +326,6 @@ Uso interno / institucional.
 
 ## 📞 Contacto
 
-Equipo de desarrollo — Proyecto Reclamos Ciudadanos.
+Equipo de arquitectura y desarrollo del Motor DSL.
 
 ---
-
-```
