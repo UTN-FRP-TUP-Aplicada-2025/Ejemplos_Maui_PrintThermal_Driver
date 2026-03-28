@@ -27,7 +27,7 @@ public class EvaluatorTests
         // CU-15 | CU-02 — Resolver referencia de datos simple
         // Arrange
         var data = new { nombre = "Juan" };
-        var resolver = new DataResolver();
+        IDataResolver resolver = new DataResolver();
 
         // Act
         var result = resolver.Resolve(data, "nombre");
@@ -46,7 +46,7 @@ public class EvaluatorTests
         {
             cliente = new { nombre = "María", apellido = "García" }
         };
-        var resolver = new DataResolver();
+        IDataResolver resolver = new DataResolver();
 
         // Act
         var result = resolver.Resolve(data, "cliente.nombre");
@@ -119,7 +119,7 @@ public class EvaluatorTests
         // CU-16 — Resolver colección simple para iteración
         // Arrange
         var data = new { items = new[] { "item1", "item2", "item3" } };
-        var resolver = new DataResolver();
+        IDataResolver resolver = new DataResolver();
 
         // Act
         var result = resolver.ResolveCollection(data, "items");
@@ -486,7 +486,8 @@ public class EvaluatorTests
         // Arrange
         var textNode = new TextNode("Hola {{nombre}}", "nombre");
         var data = new { nombre = "Juan" };
-        var evaluator = new Evaluator();
+        IDataResolver dataResolver = new DataResolver();
+        var evaluator = new Evaluator(dataResolver);
 
         // Act
         var result = evaluator.Evaluate(textNode, data);
@@ -545,7 +546,8 @@ public class EvaluatorTests
         };
 
         var parser = new DslParser();
-        var evaluator = new Evaluator();
+        IDataResolver dataResolver = new DataResolver();
+        var evaluator = new Evaluator(dataResolver);
 
         // Act
         var template = parser.Parse(dsl);

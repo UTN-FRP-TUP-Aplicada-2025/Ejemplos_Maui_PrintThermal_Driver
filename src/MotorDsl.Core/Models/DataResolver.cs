@@ -1,4 +1,5 @@
 using System.Reflection;
+using MotorDsl.Core.Contracts;
 
 namespace MotorDsl.Core.Models;
 
@@ -9,7 +10,7 @@ namespace MotorDsl.Core.Models;
 /// Sprint 2 | TK-09 (DataContext)
 /// Supports: CU-02, CU-15, CU-16
 /// </summary>
-public class DataResolver
+public class DataResolver : IDataResolver
 {
     /// <summary>
     /// Resolves a data path (e.g., "cliente.nombre", "items[0]") from the provided context.

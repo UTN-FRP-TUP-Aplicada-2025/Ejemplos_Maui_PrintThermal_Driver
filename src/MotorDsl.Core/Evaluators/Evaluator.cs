@@ -14,7 +14,15 @@ namespace MotorDsl.Core.Evaluators;
 /// </summary>
 public class Evaluator : IEvaluator
 {
-    private readonly DataResolver _dataResolver = new();
+    private readonly IDataResolver _dataResolver;
+
+    /// <summary>
+    /// Constructor with dependency injection of IDataResolver.
+    /// </summary>
+    public Evaluator(IDataResolver? dataResolver = null)
+    {
+        _dataResolver = dataResolver ?? new DataResolver();
+    }
 
     /// <summary>
     /// Evaluates an AST node against data and returns an EvaluatedDocument.
