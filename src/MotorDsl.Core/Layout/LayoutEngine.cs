@@ -40,11 +40,15 @@ public class LayoutEngine : ILayoutEngine
 
         string nodeId = $"node_{_nodeCounter++}";
 
+        var nodeAlign = node.Style?.Attributes?.TryGetValue("align", out var alignVal) == true
+            ? alignVal?.ToString() ?? "left"
+            : "left";
+
         var layoutInfo = new LayoutInfo
         {
             LineNumber = currentLine,
             ColumnNumber = 0,
-            Alignment = "left",
+            Alignment = nodeAlign,
             IsWrapped = false,
             WrappedText = "",
             IsTruncated = false,

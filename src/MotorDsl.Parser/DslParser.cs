@@ -123,7 +123,26 @@ public class DslParser : IDslParser
             ? bindToken.GetString()
             : null;
 
-        return new TextNode(text, bindPath);
+        var node = new TextNode(text, bindPath);
+
+        if (nodeToken.TryGetProperty("style", out var styleToken) && styleToken.ValueKind == JsonValueKind.Object)
+        {
+            node.Style = new StyleDefinition();
+            foreach (var prop in styleToken.EnumerateObject())
+            {
+                object value = prop.Value.ValueKind switch
+                {
+                    JsonValueKind.String => (object)(prop.Value.GetString() ?? ""),
+                    JsonValueKind.True => (object)true,
+                    JsonValueKind.False => (object)false,
+                    JsonValueKind.Number => (object)prop.Value.GetDouble(),
+                    _ => (object)prop.Value.ToString()
+                };
+                node.Style.Attributes[prop.Name] = value;
+            }
+        }
+
+        return node;
     }
 
     private ContainerNode ParseContainerNode(JsonElement nodeToken)

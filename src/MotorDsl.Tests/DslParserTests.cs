@@ -465,4 +465,60 @@ public class DslParserTests
     }
 
     #endregion
+
+    #region Style Parsing
+
+    [Fact]
+    public void Parse_TextNodeWithStyle_CapturesAlignment()
+    {
+        // Arrange
+        string json = @"{
+            ""id"": ""style-1"",
+            ""version"": ""1.0"",
+            ""root"": {
+                ""type"": ""text"",
+                ""text"": ""Centrado"",
+                ""style"": { ""align"": ""center"" }
+            }
+        }";
+
+        IDslParser parser = new DslParser();
+
+        // Act
+        var result = parser.Parse(json);
+
+        // Assert
+        var textNode = Assert.IsType<TextNode>(result.Root);
+        Assert.NotNull(textNode.Style);
+        Assert.True(textNode.Style.Attributes.ContainsKey("align"));
+        Assert.Equal("center", textNode.Style.Attributes["align"]);
+    }
+
+    [Fact]
+    public void Parse_TextNodeWithStyle_CapturesBold()
+    {
+        // Arrange
+        string json = @"{
+            ""id"": ""style-2"",
+            ""version"": ""1.0"",
+            ""root"": {
+                ""type"": ""text"",
+                ""text"": ""Negrita"",
+                ""style"": { ""bold"": true }
+            }
+        }";
+
+        IDslParser parser = new DslParser();
+
+        // Act
+        var result = parser.Parse(json);
+
+        // Assert
+        var textNode = Assert.IsType<TextNode>(result.Root);
+        Assert.NotNull(textNode.Style);
+        Assert.True(textNode.Style.Attributes.ContainsKey("bold"));
+        Assert.Equal(true, textNode.Style.Attributes["bold"]);
+    }
+
+    #endregion
 }
