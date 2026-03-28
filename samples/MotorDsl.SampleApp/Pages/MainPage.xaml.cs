@@ -39,34 +39,54 @@ public partial class MainPage : ContentPage
     {
         try
         {
-            var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
-
-            if (status != PermissionStatus.Granted)
-                status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-
-            if (status != PermissionStatus.Granted)
-            {
-                await DisplayAlertAsync("Permisos Requeridos",
-                    "Se necesitan permisos de ubicación para escanear dispositivos Bluetooth.", "OK");
-                return false;
-            }
-
+            // Android 12+ (API 31+): pedir BLUETOOTH_SCAN y BLUETOOTH_CONNECT
             if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.S)
             {
-                var activity = Platform.CurrentActivity;
-                string[] permissions = new[]
+                var activity = Platform.CurrentActivity!;
+                string[] btPermissions = new[]
                 {
                     Manifest.Permission.BluetoothScan,
                     Manifest.Permission.BluetoothConnect
                 };
 
-                foreach (var permission in permissions)
+                bool allGranted = btPermissions.All(p =>
+                    ContextCompat.CheckSelfPermission(activity, p) == (int)Android.Content.PM.Permission.Granted);
+
+                if (!allGranted)
                 {
-                    if (ContextCompat.CheckSelfPermission(activity!, permission) != (int)Android.Content.PM.Permission.Granted)
-                    {
-                        ActivityCompat.RequestPermissions(activity!, permissions, 1);
-                        break;
-                    }
+                    var tcs = new TaskCompletionSource<bool>();
+
+                    // Usar Permissions.RequestAsync con permisos custom no es posible,
+                    // así que pedimos via ActivityCompat y esperamos con un delay prudente
+                    ActivityCompat.RequestPermissions(activity, btPermissions, 1);
+
+                    // Esperar a que el usuario responda y re-verificar
+                    await Task.Delay(3000);
+
+                    allGranted = btPermissions.All(p =>
+                        ContextCompat.CheckSelfPermission(activity, p) == (int)Android.Content.PM.Permission.Granted);
+                }
+
+                if (!allGranted)
+                {
+                    await DisplayAlertAsync("Permisos Requeridos",
+                        "Se necesitan permisos de Bluetooth para escanear e imprimir.", "OK");
+                    return false;
+                }
+            }
+            else
+            {
+                // Android < 12: necesita permiso de ubicación para BT scan
+                var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+
+                if (status != PermissionStatus.Granted)
+                    status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+
+                if (status != PermissionStatus.Granted)
+                {
+                    await DisplayAlertAsync("Permisos Requeridos",
+                        "Se necesitan permisos de ubicación para escanear dispositivos Bluetooth.", "OK");
+                    return false;
                 }
             }
 
@@ -86,28 +106,54 @@ public partial class MainPage : ContentPage
     {
         try
         {
+            Console.WriteLine("[UI] OnScanClicked iniciado");
             ShowMessage("Escaneando dispositivos...");
             ScanButton.IsEnabled = false;
 
-            _devices = await _printerService.ScanDevicesAsync();
+#if ANDROID
+            if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.S)
+            {
+                var connectStatus = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
+                Console.WriteLine($"[UI] Permission check result: {connectStatus}");
+                if (connectStatus != PermissionStatus.Granted)
+                {
+                    connectStatus = await Permissions.RequestAsync<Permissions.Bluetooth>();
+                    Console.WriteLine($"[UI] Permission request result: {connectStatus}");
+                    if (connectStatus != PermissionStatus.Granted)
+                    {
+                        ShowMessage("Se necesitan permisos de Bluetooth");
+                        ScanButton.IsEnabled = true;
+                        return;
+                    }
+                }
+            }
+#endif
 
-            if (_devices.Any())
+            _devices = await _printerService.ScanDevicesAsync();
+            Console.WriteLine($"[UI] Devices count: {_devices?.Count}");
+
+            Console.WriteLine("[UI] Entrando a MainThread.InvokeOnMainThreadAsync");
+            await MainThread.InvokeOnMainThreadAsync(() =>
             {
-                DevicePicker.ItemsSource = _devices.Select(d => d.ToString()).ToList();
-                DevicePicker.IsEnabled = true;
-                ConnectButton.IsEnabled = true;
-                ShowMessage($"Se encontraron {_devices.Count} dispositivo(s) emparejado(s)");
-            }
-            else
-            {
-                ShowMessage("No se encontraron dispositivos Bluetooth emparejados");
-                await DisplayAlertAsync("Información",
-                    "No se encontraron dispositivos Bluetooth emparejados. " +
-                    "Por favor, empareja tu impresora en la configuración de Bluetooth primero.", "OK");
-            }
+                Console.WriteLine($"[UI] Dentro de MainThread - devices: {_devices?.Count}");
+                if (_devices.Any())
+                {
+                    DeviceList.ItemsSource = null;
+                    DeviceList.ItemsSource = _devices.Select(d => d.ToString()).ToList();
+                    DeviceList.IsVisible = true;
+                    Console.WriteLine("[UI] DeviceList.ItemsSource seteado");
+                    ShowMessage($"Se encontraron {_devices.Count} dispositivo(s) emparejado(s)");
+                }
+                else
+                {
+                    ShowMessage("No se encontraron dispositivos emparejados");
+                }
+            });
+            Console.WriteLine("[UI] MainThread.InvokeOnMainThreadAsync completado");
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[UI] EXCEPTION: {ex}");
             ShowMessage("Error al escanear");
             await DisplayAlertAsync("Error", $"Error al escanear dispositivos: {ex.Message}", "OK");
         }
@@ -117,13 +163,24 @@ public partial class MainPage : ContentPage
         }
     }
 
+    private void OnDeviceSelected(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.CurrentSelection.FirstOrDefault() is string selected)
+        {
+            var idx = _devices.FindIndex(d => d.ToString() == selected);
+            if (idx >= 0) ConnectButton.IsEnabled = true;
+        }
+    }
+
     // ─── BT: Connect ───
 
     private async void OnConnectClicked(object sender, EventArgs e)
     {
         try
         {
-            if (DevicePicker.SelectedIndex < 0)
+            var selected = DeviceList.SelectedItem as string;
+            var selectedDevice = _devices.FirstOrDefault(d => d.ToString() == selected);
+            if (selectedDevice == null)
             {
                 await DisplayAlertAsync("Información", "Por favor, selecciona un dispositivo", "OK");
                 return;
@@ -131,8 +188,6 @@ public partial class MainPage : ContentPage
 
             ShowMessage("Conectando...");
             ConnectButton.IsEnabled = false;
-
-            var selectedDevice = _devices[DevicePicker.SelectedIndex];
             bool success = await _printerService.ConnectAsync(selectedDevice.Address);
 
             if (success)
@@ -180,10 +235,13 @@ public partial class MainPage : ContentPage
     {
         try
         {
+            Console.WriteLine("[PREVIEW] OnPreviewClicked iniciado");
             ShowMessage("Generando vista previa...");
 
             var profile = new DeviceProfile("thermal_58mm", 32, "text");
+            Console.WriteLine("[PREVIEW] Profile creado, llamando Render...");
             var result = _engine.Render(TicketDsl.Template, TicketDsl.GetSampleData(), profile);
+            Console.WriteLine($"[PREVIEW] Render completado. IsSuccessful={result.IsSuccessful}");
 
             if (result.IsSuccessful)
             {
@@ -192,14 +250,17 @@ public partial class MainPage : ContentPage
             }
             else
             {
-                OutputLabel.Text = "ERRORES:\n" + string.Join("\n", result.Errors);
+                var errors = string.Join("\n", result.Errors);
+                Console.WriteLine($"[PREVIEW] ERRORS: {errors}");
+                OutputLabel.Text = "ERRORES:\n" + errors;
                 ShowMessage("Error al generar vista previa");
             }
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"[PREVIEW] EXCEPTION: {ex}");
             ShowMessage("Error");
-            OutputLabel.Text = $"Excepción: {ex.Message}";
+            OutputLabel.Text = $"Excepción: {ex.Message}\n\nStackTrace:\n{ex.StackTrace}\n\nInner: {ex.InnerException?.Message}\n{ex.InnerException?.StackTrace}";
         }
     }
 
@@ -292,7 +353,7 @@ public partial class MainPage : ContentPage
             StatusLabel.TextColor = Colors.Red;
             DisconnectButton.IsEnabled = false;
             PrintButton.IsEnabled = false;
-            ConnectButton.IsEnabled = DevicePicker.SelectedIndex >= 0;
+            ConnectButton.IsEnabled = DeviceList.SelectedItem != null;
         }
     }
 

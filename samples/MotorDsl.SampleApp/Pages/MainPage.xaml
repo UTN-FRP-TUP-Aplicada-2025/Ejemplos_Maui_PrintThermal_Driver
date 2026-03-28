@@ -47,11 +47,19 @@
                     CornerRadius="8"
                     HeightRequest="50"/>
 
-            <Picker x:Name="DevicePicker"
-                    Title="Selecciona una impresora"
-                    IsEnabled="False"
-                    FontSize="14"
-                    Margin="0,5,0,0"/>
+            <CollectionView x:Name="DeviceList"
+                            SelectionMode="Single"
+                            SelectionChanged="OnDeviceSelected"
+                            HeightRequest="120"
+                            IsVisible="False">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Label Text="{Binding .}"
+                               Padding="10,8"
+                               FontSize="14"/>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
 
             <!-- Sección 2: Conectar -->
             <Label Text="2. Conectar"

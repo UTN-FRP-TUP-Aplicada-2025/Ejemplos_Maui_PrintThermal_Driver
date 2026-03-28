@@ -65,10 +65,13 @@ public class DataResolver : IDataResolver
         if (value is IEnumerable<object> enumerable)
             return enumerable;
 
-        // If it's any IEnumerable, cast to IEnumerable<object>
+        // If it's any IEnumerable, convert to List<object> (AOT-safe, no .Cast<>())
         if (value is System.Collections.IEnumerable nonGenericEnumerable)
         {
-            return nonGenericEnumerable.Cast<object>();
+            var list = new List<object>();
+            foreach (var item in nonGenericEnumerable)
+                list.Add(item);
+            return list;
         }
 
         // Single item, wrap in enumerable
@@ -77,27 +80,25 @@ public class DataResolver : IDataResolver
 
     private object? ResolveProperty(object obj, string propertyName)
     {
-        if (obj == null)
-            return null;
+        if (obj == null) return null;
 
-        // Si es IDictionary<string, object?> (ExpandoObject, etc.) → buscar key directamente
-        if (obj is IDictionary<string, object?> dict)
-        {
-            return dict.TryGetValue(propertyName, out var dictValue) ? dictValue : null;
-        }
+        // 1. IDictionary<string, object> (sin nullable)
+        if (obj is IDictionary<string, object> dict1)
+            return dict1.TryGetValue(propertyName, out var v1) ? v1 : null;
 
-        // Si no → reflection como antes
-        var type = obj.GetType();
-        // Use IgnoreCase and Instance flags to find properties on anonymous types
-        var property = type.GetProperty(propertyName, 
-            BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+        // 2. IDictionary<string, object?> (con nullable)
+        if (obj is IDictionary<string, object?> dict2)
+            return dict2.TryGetValue(propertyName, out var v2) ? v2 : null;
 
-        if (property == null)
-            return null;
-
+        // 3. Para otros tipos usar GetProperty con binding flags seguros
         try
         {
-            return property.GetValue(obj);
+            var type = obj.GetType();
+            var prop = type.GetProperty(propertyName,
+                BindingFlags.Public | BindingFlags.Instance);
+            if (prop == null) return null;
+
+            return prop.GetValue(obj);
         }
         catch
         {
@@ -130,7 +131,15 @@ public class DataResolver : IDataResolver
                 return list[index];
 
             if (property is System.Collections.IEnumerable enumerable)
-                return enumerable.Cast<object>().ElementAtOrDefault(index);
+            {
+                int i = 0;
+                foreach (var item in enumerable)
+                {
+                    if (i == index) return item;
+                    i++;
+                }
+                return null;
+            }
         }
         catch
         {

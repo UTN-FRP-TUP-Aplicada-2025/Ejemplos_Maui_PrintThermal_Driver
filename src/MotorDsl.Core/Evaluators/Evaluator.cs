@@ -198,8 +198,18 @@ public class Evaluator : IEvaluator
             // Create a data context with the loop variable
             var loopData = new ExpandoObject() as IDictionary<string, object?>;
             
-            // Copy original data properties
-            if (data != null)
+            // Copy original data properties (dictionary-first for AOT safety)
+            if (data is IDictionary<string, object> dictData)
+            {
+                foreach (var kvp in dictData)
+                    loopData[kvp.Key] = kvp.Value;
+            }
+            else if (data is IDictionary<string, object?> dictDataNullable)
+            {
+                foreach (var kvp in dictDataNullable)
+                    loopData[kvp.Key] = kvp.Value;
+            }
+            else if (data != null)
             {
                 var dataProps = data.GetType().GetProperties();
                 foreach (var prop in dataProps)

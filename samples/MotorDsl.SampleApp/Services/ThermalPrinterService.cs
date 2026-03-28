@@ -3,6 +3,7 @@ using Android.Bluetooth;
 using Android.Content;
 using Android.Runtime;
 using Java.Util;
+using Microsoft.Maui.ApplicationModel;
 using AndroidBluetoothDevice = Android.Bluetooth.BluetoothDevice;
 #endif
 
@@ -40,19 +41,39 @@ public class ThermalPrinterService : IThermalPrinterService
         if (!_bluetoothAdapter.IsEnabled)
             throw new Exception("Bluetooth está desactivado. Por favor actívalo.");
 
-        var bondedDevices = _bluetoothAdapter.BondedDevices;
-
-        if (bondedDevices != null && bondedDevices.Count > 0)
+        // En Android 12+ se requiere BLUETOOTH_CONNECT para acceder a BondedDevices.
+        if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.S)
         {
-            foreach (AndroidBluetoothDevice device in bondedDevices)
+            var activity = Platform.CurrentActivity!;
+            var permStatus = AndroidX.Core.Content.ContextCompat.CheckSelfPermission(activity,
+                    Android.Manifest.Permission.BluetoothConnect);
+            if (permStatus != (int)Android.Content.PM.Permission.Granted)
             {
-                devices.Add(new BluetoothDevice
-                {
-                    Name = device.Name ?? "Dispositivo desconocido",
-                    Address = device.Address ?? "",
-                    IsPaired = true
-                });
+                throw new Exception(
+                    "Permiso BLUETOOTH_CONNECT no otorgado. Reiniciá la app y aceptá los permisos.");
             }
+        }
+
+        try
+        {
+            var bondedDevices = _bluetoothAdapter.BondedDevices;
+
+            if (bondedDevices != null && bondedDevices.Count > 0)
+            {
+                foreach (AndroidBluetoothDevice device in bondedDevices)
+                {
+                    devices.Add(new BluetoothDevice
+                    {
+                        Name = device.Name ?? "Dispositivo desconocido",
+                        Address = device.Address ?? "",
+                        IsPaired = true
+                    });
+                }
+            }
+        }
+        catch (Java.Lang.SecurityException)
+        {
+            return Task.FromResult(new List<BluetoothDevice>());
         }
 #endif
         return Task.FromResult(devices);
