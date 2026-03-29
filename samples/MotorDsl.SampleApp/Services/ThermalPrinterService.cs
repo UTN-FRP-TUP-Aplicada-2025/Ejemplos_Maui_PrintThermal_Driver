@@ -141,14 +141,16 @@ public class ThermalPrinterService : IThermalPrinterService
 #endif
     }
 
-    public async Task SendBytesAsync(byte[] data)
+    public async Task SendBytesAsync(byte[] data, PrinterProfile? profile = null)
     {
 #if ANDROID
         if (_outputStream == null)
             throw new InvalidOperationException("No hay una impresora conectada");
 
+        profile ??= PrinterProfile.Thermal58mm;
+
         // Dar tiempo a la impresora para estar lista
-        await Task.Delay(100);
+        await Task.Delay(profile.InitDelayMs);
 
         var lines = SplitByLineFeed(data);
 
@@ -156,27 +158,27 @@ public class ThermalPrinterService : IThermalPrinterService
         {
             await _outputStream.WriteAsync(line, 0, line.Length);
             await _outputStream.FlushAsync();
-            int delayMs = GetDelayForLine(line);
+            int delayMs = GetDelayForLine(line, profile);
             await Task.Delay(delayMs);
         }
 
-        // Delay final para corte de papel
-        await Task.Delay(500);
+        // Delay final
+        await Task.Delay(profile.FinalDelayMs);
 #else
         await Task.CompletedTask;
 #endif
     }
 
-    private static int GetDelayForLine(byte[] line)
+    private static int GetDelayForLine(byte[] line, PrinterProfile profile)
     {
         if (line.Length == 0) return 20;
-        if (line.Length >= 2 && line[0] == 0x1D && line[1] == 0x28) return 300;
-        if (line.Length >= 2 && line[0] == 0x1D && line[1] == 0x76) return 500;
-        if (line.Length >= 2 && line[0] == 0x1D && line[1] == 0x56) return 500;
-        if (line.Length >= 2 && line[0] == 0x1B && line[1] == 0x40) return 300;
+        if (line.Length >= 2 && line[0] == 0x1D && line[1] == 0x28) return profile.QrDelayMs;
+        if (line.Length >= 2 && line[0] == 0x1D && line[1] == 0x76) return profile.ImageDelayMs;
+        if (line.Length >= 2 && line[0] == 0x1D && line[1] == 0x56) return profile.CutDelayMs;
+        if (line.Length >= 2 && line[0] == 0x1B && line[1] == 0x40) return profile.InitCommandDelayMs;
 
-        // Texto normal: 150ms + 5ms por byte
-        return 150 + (line.Length * 5);
+        // Texto normal: base + por byte
+        return profile.LineDelayMs + (line.Length * profile.ByteDelayMs);
     }
 
     private static List<byte[]> SplitByLineFeed(byte[] data)

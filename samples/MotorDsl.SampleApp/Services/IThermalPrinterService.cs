@@ -17,7 +17,7 @@ public interface IThermalPrinterService
     /// <summary>
     /// Envía bytes crudos (ESC/POS) a la impresora conectada.
     /// </summary>
-    Task SendBytesAsync(byte[] data);
+    Task SendBytesAsync(byte[] data, PrinterProfile? profile = null);
 }
 
 /// <summary>

@@ -315,7 +315,7 @@ public partial class MainPage : ContentPage
 
             if (result.IsSuccessful && result.Output is byte[] bytes)
             {
-                await _printerService.SendBytesAsync(bytes);
+                await _printerService.SendBytesAsync(bytes, PrinterProfile.Thermal58mm);
                 ShowMessage($"Ticket impreso ({bytes.Length} bytes enviados)");
             }
             else
