@@ -3,6 +3,7 @@ using MotorDsl.Core.Engine;
 using MotorDsl.Core.Evaluators;
 using MotorDsl.Core.Layout;
 using MotorDsl.Core.Models;
+using MotorDsl.Core.Validation;
 using MotorDsl.Parser;
 using MotorDsl.Rendering;
 
@@ -281,5 +282,69 @@ public class DocumentEngineTests
         var output = result.Output?.ToString() ?? "";
 
         Assert.Contains("Carlos", output);
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Sprint 06 | TK-39 — Validator integration in pipeline
+    // ═══════════════════════════════════════════════════
+
+    private IDocumentEngine CreateEngineWithValidator()
+    {
+        var registry = new RendererRegistry();
+        registry.Register(new TextRenderer());
+        return new DocumentEngine(
+            new DslParser(),
+            new Evaluator(),
+            new LayoutEngine(),
+            registry,
+            new DataValidator()
+        );
+    }
+
+    [Fact]
+    public void DocumentEngine_WithValidator_InvalidData_ReturnsErrors()
+    {
+        var engine = CreateEngineWithValidator();
+        var dsl = """
+        {
+            "id": "val-001",
+            "version": "1.0",
+            "root": {
+                "type": "text",
+                "text": "Cliente: {{nombre}}"
+            }
+        }
+        """;
+        var data = new Dictionary<string, object>(); // campo "nombre" faltante
+
+        var result = engine.Render(dsl, data, DefaultProfile());
+
+        Assert.False(result.IsSuccessful);
+        Assert.NotEmpty(result.Errors);
+        Assert.Contains(result.Errors, e => e.Contains("nombre"));
+        Assert.Equal("", result.Output?.ToString());
+    }
+
+    [Fact]
+    public void DocumentEngine_WithValidator_ValidData_RendersProperly()
+    {
+        var engine = CreateEngineWithValidator();
+        var dsl = """
+        {
+            "id": "val-002",
+            "version": "1.0",
+            "root": {
+                "type": "text",
+                "text": "Cliente: {{nombre}}"
+            }
+        }
+        """;
+        var data = new Dictionary<string, object> { { "nombre", "Juan" } };
+
+        var result = engine.Render(dsl, data, DefaultProfile());
+
+        Assert.True(result.IsSuccessful);
+        var output = result.Output?.ToString() ?? "";
+        Assert.Contains("Juan", output);
     }
 }

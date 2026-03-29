@@ -3,6 +3,7 @@ using MotorDsl.Core.Contracts;
 using MotorDsl.Core.Engine;
 using MotorDsl.Core.Evaluators;
 using MotorDsl.Core.Layout;
+using MotorDsl.Core.Validation;
 using MotorDsl.Parser;
 using MotorDsl.Rendering;
 
@@ -22,6 +23,7 @@ public static class MotorDslServiceCollectionExtensions
             registry.Register(new EscPosRenderer());
             return registry;
         });
+        services.AddSingleton<IDataValidator, DataValidator>();
         services.AddSingleton<IDocumentEngine, DocumentEngine>();
         return new MotorDslBuilder(services);
     }

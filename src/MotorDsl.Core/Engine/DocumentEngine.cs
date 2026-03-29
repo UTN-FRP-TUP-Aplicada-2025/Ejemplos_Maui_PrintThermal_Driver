@@ -14,13 +14,15 @@ public class DocumentEngine : IDocumentEngine
     private readonly IEvaluator _evaluator;
     private readonly ILayoutEngine _layoutEngine;
     private readonly IRendererRegistry _rendererRegistry;
+    private readonly IDataValidator? _validator;
 
-    public DocumentEngine(IDslParser parser, IEvaluator evaluator, ILayoutEngine layoutEngine, IRendererRegistry rendererRegistry)
+    public DocumentEngine(IDslParser parser, IEvaluator evaluator, ILayoutEngine layoutEngine, IRendererRegistry rendererRegistry, IDataValidator? validator = null)
     {
         _parser = parser;
         _evaluator = evaluator;
         _layoutEngine = layoutEngine;
         _rendererRegistry = rendererRegistry;
+        _validator = validator;
     }
 
     public RenderResult Render(string templateDsl, object data, DeviceProfile profile)
@@ -43,6 +45,20 @@ public class DocumentEngine : IDocumentEngine
     {
         try
         {
+            // Stage 1.5: Validate (optional)
+            if (_validator != null)
+            {
+                var validation = _validator.Validate(template.Root!, data);
+                if (!validation.IsValid)
+                {
+                    var errorResult = new RenderResult(profile.RenderTarget);
+                    foreach (var error in validation.Errors)
+                        errorResult.AddError($"Validation: [{error.Type}] {error.Field} \u2014 {error.Message}");
+                    errorResult.Output = "";
+                    return errorResult;
+                }
+            }
+
             // Stage 2: Evaluate
             var evaluated = _evaluator.Evaluate(template.Root!, data);
 
