@@ -286,4 +286,21 @@ public class TextRendererTests
         Assert.True(cantIdx > 15, "Cant debe estar en la segunda mitad del ancho");
         Assert.True(totalIdx > cantIdx, "Total debe estar después de Cant");
     }
+
+    // ─── TK-34: QR placeholder en TextRenderer ───
+
+    // ─── TK-34-TEXT-01: ImageNode qrcode muestra placeholder [QR: ...] ───
+    [Fact]
+    public void Render_QrCodeNode_OutputContainsQrPlaceholder()
+    {
+        var qrNode = new ImageNode("https://example.com", imageType: "qrcode");
+
+        var profile = DefaultProfile();
+        var layouted = Layout(qrNode, profile);
+        var result = _renderer.Render(layouted, profile);
+        var output = result.Output!.ToString()!;
+
+        Assert.Contains("[QR:", output);
+        Assert.Contains("https://example.com", output);
+    }
 }

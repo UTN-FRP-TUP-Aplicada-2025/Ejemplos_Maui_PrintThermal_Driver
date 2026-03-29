@@ -96,6 +96,28 @@ public class LayoutEngine : ILayoutEngine
         {
             ApplyTableNodeLayout(tableNode, ref currentLine, layoutedDoc, profile);
         }
+        else if (node is ImageNode imageNode)
+        {
+            ApplyImageNodeLayout(imageNode, layoutInfo, profile);
+            layoutedDoc.NodeLayoutInfo[nodeId] = layoutInfo;
+            currentLine += layoutInfo.Height;
+        }
+    }
+
+    private void ApplyImageNodeLayout(ImageNode imageNode, LayoutInfo layoutInfo, DeviceProfile profile)
+    {
+        if (imageNode.ImageType?.ToLower() == "qrcode")
+        {
+            layoutInfo.WrappedText = $"[QR: {imageNode.Source}]";
+            layoutInfo.DeviceMetadata["is_qr"] = true;
+            layoutInfo.DeviceMetadata["qr_data"] = imageNode.Source;
+        }
+        else
+        {
+            layoutInfo.WrappedText = $"[IMG: {imageNode.Source}]";
+        }
+        layoutInfo.Width = profile.Width;
+        layoutInfo.Height = 1;
     }
 
     private void ApplyTableNodeLayout(TableNode tableNode, ref int currentLine, LayoutedDocument layoutedDoc, DeviceProfile profile)

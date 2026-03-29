@@ -34,6 +34,14 @@ public class EscPosRenderer : IRenderer
                 {
                     var layoutInfo = kvp.Value;
 
+                    // QR code — emit GS ( k sequence instead of text
+                    if (layoutInfo.DeviceMetadata.TryGetValue("is_qr", out var qrFlag) && qrFlag is true)
+                    {
+                        var qrData = layoutInfo.DeviceMetadata["qr_data"]?.ToString() ?? "";
+                        buffer.AddRange(EmitQrCode(qrData, GetEncoding(profile)));
+                        continue;
+                    }
+
                     // Emit alignment command
                     buffer.AddRange(GetAlignmentCommand(layoutInfo.Alignment));
 
@@ -86,5 +94,26 @@ public class EscPosRenderer : IRenderer
             "437" => Encoding.GetEncoding(437),
             _ => Encoding.ASCII
         };
+    }
+
+    private static byte[] EmitQrCode(string data, Encoding encoding)
+    {
+        var buffer = new List<byte>();
+        var urlBytes = encoding.GetBytes(data);
+        int len = urlBytes.Length + 3;
+        byte ll = (byte)(len & 0xFF);
+        byte lh = (byte)((len >> 8) & 0xFF);
+
+        // Set QR module size
+        buffer.AddRange(EscPosCommands.QrSetSize3);
+        // Set QR error correction level
+        buffer.AddRange(EscPosCommands.QrSetErrorM);
+        // Store QR data: GS ( k pL pH 31 50 30 <data>
+        buffer.AddRange(new byte[] { 0x1D, 0x28, 0x6B, ll, lh, 0x31, 0x50, 0x30 });
+        buffer.AddRange(urlBytes);
+        // Print QR code
+        buffer.AddRange(EscPosCommands.QrPrint);
+
+        return buffer.ToArray();
     }
 }
