@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging;
+using MotorDsl.Core.Models;
 using MotorDsl.Extensions;
 using MotorDsl.SampleApp.Pages;
 using MotorDsl.SampleApp.Services;
+using MotorDsl.SampleApp.Templates;
 
 namespace MotorDsl.SampleApp;
 
@@ -19,7 +21,15 @@ public static class MauiProgram
             });
 
         // Motor DSL: Parser, Evaluator, LayoutEngine, RendererRegistry, DocumentEngine
-        builder.Services.AddMotorDslEngine();
+        builder.Services.AddMotorDslEngine()
+            .AddTemplates(t =>
+            {
+                t.Add("ticket-venta", TicketDsl.Template);
+            })
+            .AddProfiles(p =>
+            {
+                p.Add(new DeviceProfile("thermal_58mm", 32, "escpos"));
+            });
 
         // Servicios de la app
         builder.Services.AddSingleton<IThermalPrinterService, ThermalPrinterService>();

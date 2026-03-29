@@ -10,7 +10,7 @@ namespace MotorDsl.Extensions;
 
 public static class MotorDslServiceCollectionExtensions
 {
-    public static IServiceCollection AddMotorDslEngine(this IServiceCollection services)
+    public static MotorDslBuilder AddMotorDslEngine(this IServiceCollection services)
     {
         services.AddSingleton<IDslParser, DslParser>();
         services.AddSingleton<IEvaluator, Evaluator>();
@@ -23,6 +23,6 @@ public static class MotorDslServiceCollectionExtensions
             return registry;
         });
         services.AddSingleton<IDocumentEngine, DocumentEngine>();
-        return services;
+        return new MotorDslBuilder(services);
     }
 }
