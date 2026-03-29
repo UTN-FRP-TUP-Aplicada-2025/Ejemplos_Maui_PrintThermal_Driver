@@ -147,10 +147,56 @@ public class ThermalPrinterService : IThermalPrinterService
         if (_outputStream == null)
             throw new InvalidOperationException("No hay una impresora conectada");
 
-        await _outputStream.WriteAsync(data, 0, data.Length);
-        await _outputStream.FlushAsync();
+        // Dar tiempo a la impresora para estar lista
+        await Task.Delay(100);
+
+        var lines = SplitByLineFeed(data);
+
+        foreach (var line in lines)
+        {
+            await _outputStream.WriteAsync(line, 0, line.Length);
+            await _outputStream.FlushAsync();
+            int delayMs = GetDelayForLine(line);
+            await Task.Delay(delayMs);
+        }
+
+        // Delay final para corte de papel
+        await Task.Delay(500);
 #else
         await Task.CompletedTask;
 #endif
+    }
+
+    private static int GetDelayForLine(byte[] line)
+    {
+        if (line.Length == 0) return 20;
+        if (line.Length >= 2 && line[0] == 0x1D && line[1] == 0x28) return 300;
+        if (line.Length >= 2 && line[0] == 0x1D && line[1] == 0x76) return 500;
+        if (line.Length >= 2 && line[0] == 0x1D && line[1] == 0x56) return 500;
+        if (line.Length >= 2 && line[0] == 0x1B && line[1] == 0x40) return 300;
+
+        // Texto normal: 150ms + 5ms por byte
+        return 150 + (line.Length * 5);
+    }
+
+    private static List<byte[]> SplitByLineFeed(byte[] data)
+    {
+        var lines = new List<byte[]>();
+        var current = new List<byte>();
+
+        foreach (byte b in data)
+        {
+            current.Add(b);
+            if (b == 0x0A) // LF
+            {
+                lines.Add(current.ToArray());
+                current.Clear();
+            }
+        }
+
+        if (current.Count > 0)
+            lines.Add(current.ToArray());
+
+        return lines;
     }
 }
