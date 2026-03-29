@@ -1,16 +1,16 @@
-# Pipeline CI/CD  
-**Archivo:** pipeline-ci-cd_v1.0.md
-**Proyecto:** Reclamos Ciudadanos  
+# Pipeline CI/CD — Motor DSL  
+**Archivo:** pipeline-ci-cd_v1.0.md  
+**Proyecto:** Motor DSL para generación y renderizado de documentos  
 **Versión:** v1.0  
 **Estado:** Aprobado  
-**Fecha:** 2026-03-02  
+**Fecha:** 2026-03-29  
 **Owner:** DevOps  
 
 ---
 
 ## 1. Propósito
 
-Este documento define el pipeline de Integración Continua y Entrega Continua (CI/CD) del proyecto Reclamos Ciudadanos. Su objetivo es automatizar la construcción, validación y despliegue del sistema para asegurar calidad, trazabilidad y rapidez en la entrega de valor.
+Este documento define el pipeline de Integración Continua y Entrega Continua (CI/CD) del Motor DSL. Su objetivo es automatizar la construcción, validación, empaquetado y publicación del motor como paquete **NuGet**, asegurando calidad, trazabilidad y consistencia en cada versión liberada.
 
 ---
 
@@ -18,17 +18,18 @@ Este documento define el pipeline de Integración Continua y Entrega Continua (C
 
 El pipeline cubre:
 
-- Build del backend  
+- Build de librerías .NET  
 - Ejecución de tests  
 - Análisis de calidad  
-- Empaquetado de artefactos  
-- Despliegue a entornos (DEV y QA en v1.0)  
+- Empaquetado como NuGet (.nupkg)  
+- Publicación en registry (NuGet local o remoto)  
 
 Fuera de alcance en v1.0:
 
-- Despliegue automático a producción  
-- Pruebas de performance automatizadas  
+- Publicación automática en producción (nuget.org)  
+- Firma de paquetes  
 - Escaneo de seguridad avanzado  
+- Publicación multi-registry  
 
 ---
 
@@ -36,14 +37,14 @@ Fuera de alcance en v1.0:
 
 El pipeline se ejecuta ante:
 
-- Push a ramas principales  
 - Pull Requests  
+- Push a ramas principales  
 - Tags de release  
 
 Flujo de alto nivel:
 
 ```text
-Commit → Build → Tests → Quality → Package → Deploy
+Commit → Build → Tests → Quality → Pack → Publish (NuGet)
 ````
 
 ---
@@ -68,8 +69,9 @@ Se ejecuta:
 
 * Build completo
 * Tests
-* Empaquetado
-* Deploy a DEV
+* Empaquetado (sin publicar)
+
+**Objetivo:** validar continuamente el estado del motor.
 
 ---
 
@@ -79,9 +81,14 @@ Se ejecuta:
 
 * Build release
 * Tests completos
-* Empaquetado versionado
-* Deploy a QA
-* (Producción manual en v1.0)
+* Generación de paquete NuGet versionado
+* Publicación en registry
+
+**Ejemplo de tag**
+
+```text
+v1.2.0
+```
 
 ---
 
@@ -96,20 +103,22 @@ Se ejecuta:
 **Pasos**
 
 * Clonar repositorio
-* Restaurar submódulos (si aplica)
-* Validar versión
+* Restaurar dependencias
+* Validar versión desde tag o build
 
 ---
 
 ### 5.2 Stage: Build
 
-**Objetivo:** compilar la solución.
+**Objetivo:** compilar las librerías del motor.
 
-**Pasos**
+**Incluye**
 
-* Restaurar dependencias
-* Compilar proyecto
-* Fallar ante error de compilación
+* MotorDsl.Core
+* MotorDsl.Parser
+* MotorDsl.Evaluator
+* MotorDsl.Rendering
+* MotorDsl.Extensions
 
 **Criterio de éxito**
 
@@ -119,17 +128,17 @@ Se ejecuta:
 
 ### 5.3 Stage: Tests
 
-**Objetivo:** validar calidad funcional básica.
+**Objetivo:** validar calidad funcional.
 
 **Incluye**
 
 * Tests unitarios
-* Tests de integración (si aplica)
+* Tests de integración del pipeline DSL
 
 **Reglas**
 
 * Cobertura mínima: 70%
-* Cualquier test fallido → pipeline falla
+* Fallo en tests → pipeline falla
 
 ---
 
@@ -140,8 +149,9 @@ Se ejecuta:
 **Incluye**
 
 * Análisis estático
-* Detección de code smells
-* Validación de convenciones
+* Code smells
+* Convenciones de naming
+* Validación de arquitectura (si aplica)
 
 **Regla**
 
@@ -149,53 +159,48 @@ Se ejecuta:
 
 ---
 
-### 5.5 Stage: Empaquetado
+### 5.5 Stage: Empaquetado (Pack)
 
-**Objetivo:** generar artefacto desplegable.
+**Objetivo:** generar el paquete NuGet.
 
 **Salida**
 
-* Imagen de contenedor o paquete
-* Versionado con SemVer
-* Publicación en registry
+* Archivo `.nupkg`
+
+**Comando base**
+
+```bash
+dotnet pack -c Release
+```
 
 **Ejemplo de nombre**
 
 ```text
-reclamos-api:1.1.0
+MotorDsl.1.2.0.nupkg
 ```
 
 ---
 
-### 5.6 Stage: Deploy DEV
+### 5.6 Stage: Publicación (Publish NuGet)
 
-**Objetivo:** validación continua temprana.
-
-**Condición**
-
-* Solo desde rama develop/main
-
-**Acciones**
-
-* Desplegar servicio
-* Ejecutar smoke tests
-* Verificar health endpoint
-
----
-
-### 5.7 Stage: Deploy QA
-
-**Objetivo:** validación funcional formal.
+**Objetivo:** distribuir el paquete.
 
 **Condición**
 
-* Solo en tags de release
+* Solo en tags de versión
 
-**Acciones**
+**Destinos posibles**
 
-* Deploy controlado
-* Notificación a QA
-* Registro de versión
+* NuGet local (filesystem)
+* Azure Artifacts
+* GitHub Packages
+* NuGet.org (futuro)
+
+**Comando base**
+
+```bash
+dotnet nuget push MotorDsl.1.2.0.nupkg --api-key <API_KEY> --source <URL>
+```
 
 ---
 
@@ -207,21 +212,30 @@ El pipeline falla si ocurre cualquiera de los siguientes:
 * Tests fallidos
 * Cobertura < 70%
 * Issues críticos de análisis
-* Fallo en smoke tests
+* Fallo en empaquetado
 
 ---
 
 ## 7. Versionado en el pipeline
 
+Se utiliza **Semantic Versioning (SemVer)**.
+
 La versión se determina por:
 
-1. Tag git (prioritario)
+1. Tag git (principal)
 2. Número de build (fallback)
 
-**Ejemplo**
+**Ejemplos**
 
-* Tag: v1.2.0 → versión 1.2.0
-* Sin tag → 1.2.0-build.45
+* v1.0.0 → versión oficial
+* v1.1.0 → nueva funcionalidad
+* v1.1.1 → bugfix
+
+Fallback:
+
+```text
+1.1.0-build.45
+```
 
 ---
 
@@ -229,24 +243,32 @@ La versión se determina por:
 
 Variables mínimas:
 
-* DATABASE_CONNECTION
-* API_KEYS (seguras)
-* ENVIRONMENT
-* LOG_LEVEL
+* NUGET_API_KEY
+* NUGET_SOURCE
+* BUILD_CONFIGURATION
+* VERSION
 
-**Regla**
+**Reglas**
 
-Nunca hardcodear secretos en el repositorio.
+* Nunca hardcodear API keys
+* Usar secretos del pipeline
 
 ---
 
 ## 9. Estrategia de rollback
 
-En caso de fallo en producción (manual en v1.0):
+En caso de error en publicación:
 
-* Mantener última imagen estable
-* Permitir redeploy inmediato
-* Migraciones reversibles cuando sea posible
+* No sobrescribir versiones existentes (inmutabilidad)
+* Publicar nueva versión corregida (PATCH)
+* Mantener historial de versiones
+
+**Ejemplo**
+
+```text
+1.1.0 (fallo)
+→ 1.1.1 (corregido)
+```
 
 ---
 
@@ -254,10 +276,11 @@ En caso de fallo en producción (manual en v1.0):
 
 Se debe registrar:
 
-* Duración de build
-* Tasa de fallos
+* Tiempo de build
+* Tiempo de tests
 * Cobertura de tests
-* Frecuencia de deploy
+* Versiones publicadas
+* Frecuencia de releases
 
 ---
 
@@ -267,9 +290,8 @@ Se debe registrar:
 stages:
   - build
   - test
-  - quality
-  - package
-  - deploy_dev
+  - pack
+  - publish
 
 build:
   script: dotnet build
@@ -277,24 +299,25 @@ build:
 test:
   script: dotnet test
 
-package:
-  script: docker build -t reclamos-api .
+pack:
+  script: dotnet pack -c Release
 
-deploy_dev:
-  script: ./deploy-dev.sh
+publish:
+  script: dotnet nuget push *.nupkg --api-key $NUGET_API_KEY --source $NUGET_SOURCE
   only:
-    - develop
+    - tags
 ```
 
 ---
 
 ## 12. Riesgos
 
-| Riesgo           | Impacto | Mitigación                  |
-| ---------------- | ------- | --------------------------- |
-| Builds lentos    | Media   | cache dependencias          |
-| Tests inestables | Alta    | aislar pruebas              |
-| Deploy manual    | Media   | automatizar progresivamente |
+| Riesgo                | Impacto | Mitigación                   |
+| --------------------- | ------- | ---------------------------- |
+| Versionado incorrecto | Alta    | uso de tags SemVer           |
+| Publicación duplicada | Alta    | versiones inmutables         |
+| Tests insuficientes   | Alta    | cobertura mínima obligatoria |
+| API key expuesta      | Crítica | uso de secrets seguros       |
 
 ---
 
@@ -302,17 +325,19 @@ deploy_dev:
 
 Planeado para v2.x:
 
-* Deploy automático a producción
-* Pruebas de performance
-* Escaneo de seguridad
-* Canary releases
+* Publicación automática en NuGet.org
+* Firma de paquetes
+* Validación de compatibilidad (breaking changes)
+* Escaneo de seguridad (SCA)
+* Generación automática de changelog
+* Multi-target frameworks
 
 ---
 
 ## 14. Control de cambios
 
-| Versión | Fecha      | Autor  | Descripción                     |
-| ------- | ---------- | ------ | ------------------------------- |
-| v1.0    | 2026-03-02 | DevOps | Definición inicial del pipeline |
+| Versión | Fecha      | Autor  | Descripción                             |
+| ------- | ---------- | ------ | --------------------------------------- |
+| v1.0    | 2026-03-29 | DevOps | Pipeline inicial para publicación NuGet |
 
 ---

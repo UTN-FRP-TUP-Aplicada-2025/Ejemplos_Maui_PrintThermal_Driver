@@ -37,9 +37,18 @@ public class EscPosRenderer : IRenderer
                     // Emit alignment command
                     buffer.AddRange(GetAlignmentCommand(layoutInfo.Alignment));
 
+                    // Bold on if metadata says so
+                    bool isBold = layoutInfo.DeviceMetadata.TryGetValue("bold", out var bv) && bv is true;
+                    if (isBold)
+                        buffer.AddRange(EscPosCommands.StyleBold);
+
                     // Emit text bytes
                     var encoding = GetEncoding(profile);
                     buffer.AddRange(encoding.GetBytes(layoutInfo.WrappedText));
+
+                    // Bold off after bold line
+                    if (isBold)
+                        buffer.AddRange(EscPosCommands.StyleNormal);
 
                     // Line feed after each text entry
                     buffer.AddRange(EscPosCommands.LineFeed);

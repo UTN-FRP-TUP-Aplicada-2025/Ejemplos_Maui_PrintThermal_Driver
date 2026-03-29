@@ -1,7 +1,6 @@
-````markdown
-# entornos-deploy_v1.0.md  
+# Entornos de Deploy  
 **Archivo:** entornos-deploy_v1.0.md  
-**Proyecto:** Reclamos Ciudadanos  
+**Proyecto:** Motor DSL (Librería de Generación de Documentos)  
 **Versión:** v1.0  
 **Estado:** Aprobado  
 **Fecha:** 2026-03-28  
@@ -11,7 +10,7 @@
 
 ## 1. Propósito
 
-Este documento define los entornos de despliegue del sistema Reclamos Ciudadanos, sus responsabilidades, configuraciones generales y reglas de promoción entre ambientes. El objetivo es asegurar consistencia, aislamiento, trazabilidad y calidad en el ciclo de entrega continua.
+Este documento define los entornos de despliegue del motor DSL, sus responsabilidades, configuraciones generales y reglas de promoción entre ambientes. El objetivo es asegurar consistencia, aislamiento, trazabilidad y calidad en el ciclo de entrega continua de la librería y sus componentes asociados.
 
 ---
 
@@ -25,7 +24,7 @@ Flujo de promoción:
 DEV → QA → STAGING (opcional) → PROD
 ````
 
-Cada entorno cumple un rol específico dentro del ciclo de validación y liberación.
+Cada entorno cumple un rol específico dentro del ciclo de validación del motor, sus extensiones y sus artefactos.
 
 ---
 
@@ -33,27 +32,27 @@ Cada entorno cumple un rol específico dentro del ciclo de validación y liberac
 
 ### 3.1 Propósito
 
-Permitir a los desarrolladores construir, integrar y validar funcionalidades de manera ágil.
+Permitir a los desarrolladores del motor construir, probar y validar nuevas funcionalidades del DSL, renderizadores y extensiones de manera ágil.
 
 ### 3.2 Características
 
-* Deploy frecuente (on commit o merge)
-* Datos sintéticos o de prueba
+* Deploy frecuente (por commit o merge)
+* Datos de prueba / ejemplos DSL
 * Logging detallado
 * Debug habilitado
 * Configuración flexible
-* Baja criticidad de estabilidad
+* Entorno no estable
 
 ### 3.3 Uso principal
 
-* Desarrollo de nuevas funcionalidades
-* Validación técnica
-* Integración temprana
-* Pruebas unitarias e integración básica
+* Desarrollo de nuevas capacidades del motor
+* Validación de nodos DSL
+* Pruebas de renderizado
+* Integración de extensiones
 
 ### 3.4 Responsables
 
-* Equipo de desarrollo
+* Equipo de desarrollo del motor
 
 ---
 
@@ -61,22 +60,22 @@ Permitir a los desarrolladores construir, integrar y validar funcionalidades de 
 
 ### 4.1 Propósito
 
-Validar el comportamiento funcional del sistema contra los requisitos definidos.
+Validar el comportamiento funcional del motor DSL contra especificaciones, casos de uso y criterios de validación.
 
 ### 4.2 Características
 
-* Deploy por feature o por release
-* Datos controlados y consistentes
+* Deploy por versión o feature
+* Datos controlados
 * Logging moderado
 * Configuración cercana a producción
 * Acceso restringido
 
 ### 4.3 Uso principal
 
-* Pruebas funcionales
-* Pruebas de regresión
-* Validación de criterios de aceptación
-* Ejecución de casos de prueba
+* Validación de casos de prueba
+* Ejecución de pruebas funcionales del DSL
+* Validación de renderizadores
+* Verificación de extensiones
 
 ### 4.4 Responsables
 
@@ -91,11 +90,12 @@ Validar el comportamiento funcional del sistema contra los requisitos definidos.
 
 ### 5.1 Propósito
 
-Simular producción lo más fielmente posible antes de liberar cambios.
+Simular un entorno equivalente a producción para validar releases del motor antes de su publicación.
 
 ### 5.2 Características
 
 * Configuración idéntica a producción
+* Versiones específicas del motor
 * Datos anonimizados o representativos
 * Logging productivo
 * Seguridad completa habilitada
@@ -103,10 +103,10 @@ Simular producción lo más fielmente posible antes de liberar cambios.
 
 ### 5.3 Uso principal
 
-* Smoke tests finales
-* Validación de despliegue
-* Validación de integraciones externas
-* Pruebas de aceptación finales
+* Smoke tests de release del motor
+* Validación de artefactos publicados
+* Pruebas de integración completas
+* Validación de compatibilidad de extensiones
 
 ### 5.4 Responsables
 
@@ -120,29 +120,28 @@ Simular producción lo más fielmente posible antes de liberar cambios.
 
 ### 6.1 Propósito
 
-Proveer el servicio en vivo para usuarios finales.
+Publicar versiones estables del motor DSL como librería consumible (paquete NuGet o equivalente) y/o servicios asociados.
 
 ### 6.2 Características
 
-* Alta disponibilidad
-* Escalabilidad horizontal
+* Alta disponibilidad (si aplica como servicio)
 * Logging controlado
 * Monitoreo activo
 * Seguridad reforzada
-* Cambios estrictamente controlados
+* Versiones inmutables
 
 ### 6.3 Reglas
 
-* Solo versiones aprobadas pueden desplegarse
-* Requiere pipeline CI exitoso
-* Requiere validación en QA
-* Requiere versión etiquetada (tag)
+* Solo versiones aprobadas pueden publicarse
+* Requiere pipeline CI/CD exitoso
+* Requiere versionado SemVer
+* Cada release debe estar etiquetado
 
 ### 6.4 Responsables
 
 * DevOps
-* Operaciones
-* Arquitectura (gobernanza)
+* Arquitectura
+* Mantenimiento de plataforma
 
 ---
 
@@ -164,16 +163,17 @@ Cada entorno debe definir su configuración mediante variables externas.
 
 ### Reglas
 
-* No hardcodear configuraciones
-* Usar variables de entorno o servicios de configuración
-* Separar configuración de código
+* No hardcodear configuraciones en el motor
+* Usar variables de entorno o archivos de configuración externos
+* Separar configuración de código y de DSL
 
 ### Ejemplos de variables
 
-* DATABASE_URL
-* API_KEYS
 * ENVIRONMENT
 * LOG_LEVEL
+* RENDER_MODE
+* ENABLE_EXTENSIONS
+* CACHE_SETTINGS
 
 ---
 
@@ -187,15 +187,15 @@ MAJOR.MINOR.PATCH
 
 Ejemplos:
 
-* 1.0.0 → release inicial
-* 1.1.0 → nueva funcionalidad
-* 1.1.1 → bugfix
+* 1.0.0 → release inicial del motor
+* 1.1.0 → nuevas capacidades DSL o renderizado
+* 1.1.1 → correcciones
 
 ### Reglas
 
 * Cada deploy a QA debe estar asociado a una versión
-* Cada deploy a PROD debe estar taggeado
-* No se permiten despliegues sin versión trazable
+* Cada release a PROD debe estar versionado y taggeado
+* No se permiten versiones no trazables en producción
 
 ---
 
@@ -211,25 +211,24 @@ Ejemplos:
 6. Validación funcional
 7. Promoción a STAGING (si aplica)
 8. Aprobación final
-9. Deploy a PROD
+9. Publicación en PROD
 
 ### Criterios de promoción
 
-* Tests en verde
 * Build exitoso
+* Tests en verde
+* Validaciones de DSL correctas
+* Casos de prueba aprobados
 * Sin defectos críticos
-* Validación QA aprobada
 
 ---
 
 ## 11. Estrategia de despliegue
 
-Se recomienda:
-
-* Deploy inmutable por versión
-* Uso de artefactos versionados (containers o paquetes)
-* Despliegues automatizados desde CI/CD
+* Artefactos inmutables por versión
+* Publicación versionada (ej: NuGet)
 * Separación entre build y deploy
+* Deploy automatizado vía CI/CD
 
 ---
 
@@ -237,16 +236,16 @@ Se recomienda:
 
 ### Estrategia
 
-* Mantener versiones anteriores disponibles
-* Deploy basado en versiones específicas
-* Uso de migraciones reversibles cuando aplique
+* Mantener versiones anteriores del motor disponibles
+* Posibilidad de volver a una versión previa
+* Control de compatibilidad con extensiones
 
 ### Cuándo aplicar
 
-* Fallos críticos en producción
-* Problemas de performance severos
-* Errores en migraciones
-* Incidencias de disponibilidad
+* Fallos críticos en renderizado
+* Incompatibilidad DSL
+* Errores en nuevas versiones
+* Problemas de integración con extensiones
 
 ---
 
@@ -255,10 +254,10 @@ Se recomienda:
 Se recomienda progresivamente:
 
 * Logs estructurados
-* Métricas de aplicación
+* Métricas del motor (tiempo de render, errores)
 * Health checks
-* Alertas básicas en DEV/QA
-* Monitoreo completo en PROD
+* Trazabilidad de ejecución DSL
+* Alertas en producción
 
 ---
 
@@ -272,19 +271,21 @@ Se recomienda progresivamente:
 Incluye:
 
 * Gestión de secretos
-* Autenticación y autorización
-* Protección de endpoints sensibles
+* Control de dependencias externas
+* Validación de inputs DSL
+* Protección contra ejecución no segura
 
 ---
 
 ## 15. Riesgos
 
-| Riesgo                     | Impacto | Mitigación                     |
-| -------------------------- | ------- | ------------------------------ |
-| Diferencias entre entornos | Alta    | Configuración por entorno      |
-| Datos inconsistentes       | Media   | Uso de datos controlados       |
-| Deploy manual              | Alta    | Automatización CI/CD           |
-| Falta de trazabilidad      | Alta    | Versionado + tags obligatorios |
+| Riesgo                     | Impacto | Mitigación                    |
+| -------------------------- | ------- | ----------------------------- |
+| Diferencias entre entornos | Alta    | Configuración por entorno     |
+| Incompatibilidad DSL       | Alta    | versionado SemVer + tests     |
+| Extensiones incompatibles  | Alta    | contratos y versionado        |
+| Deploy manual              | Alta    | automatización CI/CD          |
+| Falta de trazabilidad      | Alta    | tags + versionado obligatorio |
 
 ---
 

@@ -92,6 +92,114 @@ public class LayoutEngine : ILayoutEngine
                 }
             }
         }
+        else if (node is TableNode tableNode)
+        {
+            ApplyTableNodeLayout(tableNode, ref currentLine, layoutedDoc, profile);
+        }
+    }
+
+    private void ApplyTableNodeLayout(TableNode tableNode, ref int currentLine, LayoutedDocument layoutedDoc, DeviceProfile profile)
+    {
+        int numCols = Math.Max(
+            tableNode.Headers.Count,
+            tableNode.Rows.Count > 0 ? tableNode.Rows[0].Count : 0);
+
+        if (numCols == 0) return;
+
+        int width = profile.Width;
+        int[] colWidths = CalculateColumnWidths(numCols, width);
+
+        bool isBold = tableNode.Style?.Attributes?.TryGetValue("bold", out var boldVal) == true
+            && boldVal?.ToString()?.ToLower() == "true";
+
+        // Header line
+        if (tableNode.Headers.Count > 0)
+        {
+            string headerText = FormatTableRow(tableNode.Headers, colWidths);
+            string headerId = $"node_{_nodeCounter++}";
+            layoutedDoc.NodeLayoutInfo[headerId] = new LayoutInfo
+            {
+                LineNumber = currentLine++,
+                ColumnNumber = 0,
+                Width = width,
+                Height = 1,
+                Alignment = "left",
+                WrappedText = headerText,
+                DeviceMetadata = isBold
+                    ? new Dictionary<string, object> { ["bold"] = true }
+                    : new Dictionary<string, object>()
+            };
+
+            // Separator line
+            string separator = new string('-', width);
+            string sepId = $"node_{_nodeCounter++}";
+            layoutedDoc.NodeLayoutInfo[sepId] = new LayoutInfo
+            {
+                LineNumber = currentLine++,
+                ColumnNumber = 0,
+                Width = width,
+                Height = 1,
+                Alignment = "left",
+                WrappedText = separator,
+                DeviceMetadata = new Dictionary<string, object>()
+            };
+        }
+
+        // Data rows
+        foreach (var row in tableNode.Rows)
+        {
+            string rowText = FormatTableRow(row, colWidths);
+            string rowId = $"node_{_nodeCounter++}";
+            layoutedDoc.NodeLayoutInfo[rowId] = new LayoutInfo
+            {
+                LineNumber = currentLine++,
+                ColumnNumber = 0,
+                Width = width,
+                Height = 1,
+                Alignment = "left",
+                WrappedText = rowText,
+                DeviceMetadata = new Dictionary<string, object>()
+            };
+        }
+    }
+
+    private static int[] CalculateColumnWidths(int numCols, int totalWidth)
+    {
+        int[] widths = new int[numCols];
+        if (numCols == 1)
+        {
+            widths[0] = totalWidth;
+            return widths;
+        }
+
+        int separators = numCols - 1;
+        int usable = totalWidth - separators;
+        int col0Width = usable / 2;
+        int remaining = usable - col0Width;
+        int otherCols = numCols - 1;
+        int perOther = remaining / otherCols;
+        int extraChars = remaining - (perOther * otherCols);
+
+        widths[0] = col0Width;
+        for (int i = 1; i < numCols; i++)
+        {
+            widths[i] = perOther + (i <= extraChars ? 1 : 0);
+        }
+
+        return widths;
+    }
+
+    private static string FormatTableRow(IList<string> cells, int[] colWidths)
+    {
+        var parts = new List<string>();
+        for (int i = 0; i < colWidths.Length; i++)
+        {
+            string cell = i < cells.Count ? cells[i] : "";
+            if (cell.Length > colWidths[i])
+                cell = cell.Substring(0, colWidths[i]);
+            parts.Add(cell.PadRight(colWidths[i]));
+        }
+        return string.Join(" ", parts);
     }
 
     private void ApplyTextNodeLayout(TextNode textNode, LayoutInfo layoutInfo, DeviceProfile profile)

@@ -154,4 +154,136 @@ public class TextRendererTests
 
         Assert.True(result.IsSuccessful);
     }
+
+    // ─── TK-32: TableNode rendering en TextRenderer ───
+
+    private DeviceProfile TableProfile() => new("thermal_40", 40, "text");
+
+    // ─── TK-32-01: Tabla con headers y rows contiene ambos ───
+    [Fact]
+    public void Render_TableWithHeadersAndRows_OutputContainsBoth()
+    {
+        var table = new TableNode(
+            new List<string> { "Descripcion", "Cant", "Total" },
+            new List<List<string>>
+            {
+                new() { "Cafe", "2", "$300.00" },
+                new() { "Medialunas", "6", "$300.00" }
+            });
+
+        var profile = TableProfile();
+        var layouted = Layout(table, profile);
+        var result = _renderer.Render(layouted, profile);
+        var output = result.Output!.ToString()!;
+
+        Assert.Contains("Descripcion", output);
+        Assert.Contains("Cant", output);
+        Assert.Contains("Total", output);
+        Assert.Contains("Cafe", output);
+        Assert.Contains("Medialunas", output);
+        Assert.Contains("$300.00", output);
+    }
+
+    // ─── TK-32-02: Tabla con headers sin rows muestra solo headers ───
+    [Fact]
+    public void Render_TableWithHeadersNoRows_OutputContainsHeaders()
+    {
+        var table = new TableNode(
+            new List<string> { "Producto", "Precio" },
+            new List<List<string>>());
+
+        var profile = TableProfile();
+        var layouted = Layout(table, profile);
+        var result = _renderer.Render(layouted, profile);
+        var output = result.Output!.ToString()!;
+
+        Assert.Contains("Producto", output);
+        Assert.Contains("Precio", output);
+    }
+
+    // ─── TK-32-03: Tabla sin headers solo rows muestra datos ───
+    [Fact]
+    public void Render_TableNoHeadersWithRows_OutputContainsRows()
+    {
+        var table = new TableNode(
+            new List<string>(),
+            new List<List<string>>
+            {
+                new() { "Cafe", "2", "$300.00" }
+            });
+
+        var profile = TableProfile();
+        var layouted = Layout(table, profile);
+        var result = _renderer.Render(layouted, profile);
+        var output = result.Output!.ToString()!;
+
+        Assert.Contains("Cafe", output);
+        Assert.Contains("$300.00", output);
+    }
+
+    // ─── TK-32-04: Tabla vacía no rompe ───
+    [Fact]
+    public void Render_EmptyTable_DoesNotThrow()
+    {
+        var table = new TableNode();
+
+        var profile = TableProfile();
+        var layouted = Layout(table, profile);
+        var result = _renderer.Render(layouted, profile);
+
+        Assert.True(result.IsSuccessful);
+    }
+
+    // ─── TK-32-05: Headers aparecen antes que rows ───
+    [Fact]
+    public void Render_Table_HeadersAppearBeforeRows()
+    {
+        var table = new TableNode(
+            new List<string> { "Descripcion", "Cant", "Total" },
+            new List<List<string>>
+            {
+                new() { "Cafe", "2", "$300.00" }
+            });
+
+        var profile = TableProfile();
+        var layouted = Layout(table, profile);
+        var result = _renderer.Render(layouted, profile);
+        var output = result.Output!.ToString()!;
+
+        var headerIdx = output.IndexOf("Descripcion");
+        var rowIdx = output.IndexOf("Cafe");
+
+        Assert.True(headerIdx >= 0, "Debe contener header");
+        Assert.True(rowIdx >= 0, "Debe contener row");
+        Assert.True(headerIdx < rowIdx, "Header antes que row");
+    }
+
+    // ─── TK-32-06: Col 0 ocupa ~50% del ancho, cols restantes el otro 50% ───
+    [Fact]
+    public void Render_Table_FirstColumnIsWiderThanOthers()
+    {
+        var table = new TableNode(
+            new List<string> { "Descripcion", "Cant", "Total" },
+            new List<List<string>>
+            {
+                new() { "Cafe", "2", "$300.00" }
+            });
+
+        var profile = TableProfile(); // width 40
+        var layouted = Layout(table, profile);
+        var result = _renderer.Render(layouted, profile);
+        var output = result.Output!.ToString()!;
+
+        // La primera línea visible con contenido debería ser el header
+        var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var headerLine = lines.FirstOrDefault(l => l.Contains("Descripcion"));
+        Assert.NotNull(headerLine);
+
+        // "Descripcion" empieza al inicio (col 0 = ~50% = 19 chars)
+        // "Cant" y "Total" deberían estar en la segunda mitad
+        var cantIdx = headerLine.IndexOf("Cant");
+        var totalIdx = headerLine.IndexOf("Total");
+        Assert.True(cantIdx > 15, "Cant debe estar en la segunda mitad del ancho");
+        Assert.True(totalIdx > cantIdx, "Total debe estar después de Cant");
+    }
 }
