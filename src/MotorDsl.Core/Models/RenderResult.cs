@@ -70,4 +70,26 @@ public class RenderResult
     {
         Errors.Add(message);
     }
+
+    /// <summary>
+    /// Converts byte[] Output to space-separated hex string.
+    /// Returns null if Output is not byte[].
+    /// </summary>
+    public string? ToHexString()
+    {
+        if (Output is byte[] bytes)
+            return BitConverter.ToString(bytes).Replace("-", " ");
+        return null;
+    }
+
+    /// <summary>
+    /// Converts byte[] Output to Base64 string.
+    /// Returns null if Output is not byte[].
+    /// </summary>
+    public string? ToBase64()
+    {
+        if (Output is byte[] bytes)
+            return Convert.ToBase64String(bytes);
+        return null;
+    }
 }
