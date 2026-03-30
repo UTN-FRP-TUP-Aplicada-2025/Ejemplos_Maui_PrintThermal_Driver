@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:MotorDsl.MultaApp.Controls"
+             x:Class="MotorDsl.MultaApp.Pages.MainPage"
+             Title="Acta de Infracción">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Tab bar -->
+        <HorizontalStackLayout Grid.Row="0" Spacing="0" BackgroundColor="#1565C0">
+            <Button x:Name="TabPreview" Text="Preview" Clicked="OnTabClicked"
+                    BackgroundColor="#1565C0" TextColor="White" CornerRadius="0"
+                    WidthRequest="95" HeightRequest="44" FontSize="13" />
+            <Button x:Name="TabEscPos" Text="ESC/POS" Clicked="OnTabClicked"
+                    BackgroundColor="#1976D2" TextColor="White" CornerRadius="0"
+                    WidthRequest="95" HeightRequest="44" FontSize="13" />
+            <Button x:Name="TabPdf" Text="PDF" Clicked="OnTabClicked"
+                    BackgroundColor="#1976D2" TextColor="White" CornerRadius="0"
+                    WidthRequest="95" HeightRequest="44" FontSize="13" />
+            <Button x:Name="TabExport" Text="Exportar" Clicked="OnTabClicked"
+                    BackgroundColor="#1976D2" TextColor="White" CornerRadius="0"
+                    WidthRequest="95" HeightRequest="44" FontSize="13" />
+        </HorizontalStackLayout>
+
+        <!-- Tab 1: Preview MAUI -->
+        <ScrollView x:Name="PanelPreview" Grid.Row="1" IsVisible="True">
+            <VerticalStackLayout Padding="10" Spacing="10">
+                <Button Text="Generar Preview" Clicked="OnGeneratePreviewClicked"
+                        BackgroundColor="#4CAF50" TextColor="White" CornerRadius="8" HeightRequest="44" />
+                <Border Stroke="DarkGray" StrokeShape="RoundRectangle 5"
+                        Padding="10" BackgroundColor="White" MinimumHeightRequest="200">
+                    <ScrollView>
+                        <controls:MauiDocumentPreview x:Name="MauiPreview" />
+                    </ScrollView>
+                </Border>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Tab 2: ESC/POS Hex dump -->
+        <ScrollView x:Name="PanelEscPos" Grid.Row="1" IsVisible="False">
+            <VerticalStackLayout Padding="10" Spacing="10">
+                <Button Text="Generar ESC/POS" Clicked="OnGenerateEscPosClicked"
+                        BackgroundColor="#2196F3" TextColor="White" CornerRadius="8" HeightRequest="44" />
+                <Label x:Name="EscPosOutput" Text="Esperando..." FontSize="11"
+                       FontFamily="Consolas" LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Tab 3: PDF Preview -->
+        <ScrollView x:Name="PanelPdf" Grid.Row="1" IsVisible="False">
+            <VerticalStackLayout Padding="10" Spacing="10">
+                <Button Text="Generar PDF" Clicked="OnGeneratePdfClicked"
+                        BackgroundColor="#FF9800" TextColor="White" CornerRadius="8" HeightRequest="44" />
+                <WebView x:Name="PdfWebView" HeightRequest="600" />
+                <Label x:Name="PdfStatus" Text="" FontSize="12" TextColor="Gray" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Tab 4: Exportar -->
+        <ScrollView x:Name="PanelExport" Grid.Row="1" IsVisible="False">
+            <VerticalStackLayout Padding="10" Spacing="15">
+                <Label Text="Exportar a API REST" FontSize="18" FontAttributes="Bold" />
+                <Label Text="URL del endpoint:" FontSize="14" />
+                <Entry x:Name="ApiUrlEntry" Placeholder="https://api.ejemplo.com/api/multas"
+                       Text="https://api.ejemplo.com/api/multas/SMT-2026-004571/ticket"
+                       FontSize="13" />
+                <Button Text="Enviar a API" Clicked="OnExportClicked"
+                        BackgroundColor="#9C27B0" TextColor="White" CornerRadius="8" HeightRequest="44" />
+                <Label x:Name="ExportStatus" Text="" FontSize="12" LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Status bar -->
+        <Label x:Name="StatusLabel" Grid.Row="1" Text="" FontSize="11" TextColor="Gray"
+               VerticalOptions="End" HorizontalOptions="Fill" Padding="10,5"
+               BackgroundColor="#F5F5F5" />
+
+    </Grid>
+
+</ContentPage>

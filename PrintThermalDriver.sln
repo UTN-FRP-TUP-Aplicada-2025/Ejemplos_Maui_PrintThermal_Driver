@@ -19,6 +19,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5D20
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MotorDsl.SampleApp", "samples\MotorDsl.SampleApp\MotorDsl.SampleApp.csproj", "{A1B4DD87-F578-4947-8305-157E67E039D2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MotorDsl.MultaApp", "samples\MotorDsl.MultaApp\MotorDsl.MultaApp.csproj", "{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -101,6 +103,18 @@ Global
 		{A1B4DD87-F578-4947-8305-157E67E039D2}.Release|x64.Build.0 = Release|Any CPU
 		{A1B4DD87-F578-4947-8305-157E67E039D2}.Release|x86.ActiveCfg = Release|Any CPU
 		{A1B4DD87-F578-4947-8305-157E67E039D2}.Release|x86.Build.0 = Release|Any CPU
+		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Debug|x64.Build.0 = Debug|Any CPU
+		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Debug|x86.Build.0 = Debug|Any CPU
+		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Release|x64.ActiveCfg = Release|Any CPU
+		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Release|x64.Build.0 = Release|Any CPU
+		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Release|x86.ActiveCfg = Release|Any CPU
+		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -108,5 +122,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{36183286-A511-4FD7-A8F2-C8BBB4CF8E28} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{A1B4DD87-F578-4947-8305-157E67E039D2} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
+		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 	EndGlobalSection
 EndGlobal
