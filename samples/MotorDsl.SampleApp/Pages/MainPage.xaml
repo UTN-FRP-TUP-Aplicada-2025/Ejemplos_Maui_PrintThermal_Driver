@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:MotorDsl.SampleApp.Controls"
              x:Class="MotorDsl.SampleApp.Pages.MainPage"
              Title="MotorDsl - Ticket Térmico">
 
@@ -122,6 +123,34 @@
                     CornerRadius="8"
                     HeightRequest="50"
                     Margin="0,5"/>
+
+            <Button x:Name="MauiPreviewButton"
+                    Text="Vista Previa (MAUI)"
+                    Clicked="OnMauiPreviewClicked"
+                    BackgroundColor="#9C27B0"
+                    TextColor="White"
+                    CornerRadius="8"
+                    HeightRequest="50"
+                    Margin="0,5"/>
+
+            <!-- Sección: Vista Previa MAUI -->
+            <Label Text="Vista Previa MAUI"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   Margin="0,20,0,10"/>
+
+            <Frame x:Name="MauiPreviewFrame"
+                   BorderColor="DarkGray"
+                   CornerRadius="5"
+                   Padding="10"
+                   HasShadow="False"
+                   BackgroundColor="White"
+                   IsVisible="False"
+                   MinimumHeightRequest="150">
+                <ScrollView>
+                    <controls:MauiDocumentPreview x:Name="MauiPreview" />
+                </ScrollView>
+            </Frame>
 
             <!-- Sección 4: Output preview -->
             <Label Text="4. Output"

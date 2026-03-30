@@ -78,6 +78,22 @@ public class DocumentEngine : IDocumentEngine
         }
     }
 
+    public LayoutedDocument RenderLayout(string templateDsl, object data, DeviceProfile profile)
+    {
+        var template = _parser.Parse(templateDsl);
+
+        if (_validator != null)
+        {
+            var validation = _validator.Validate(template.Root!, data);
+            if (!validation.IsValid)
+                throw new InvalidOperationException(
+                    "Validation failed: " + string.Join("; ", validation.Errors.Select(e => e.Message)));
+        }
+
+        var evaluated = _evaluator.Evaluate(template.Root!, data);
+        return _layoutEngine.ApplyLayout(evaluated, profile);
+    }
+
     private IRenderer GetRenderer(string target)
     {
         return _rendererRegistry.GetRenderer(target)

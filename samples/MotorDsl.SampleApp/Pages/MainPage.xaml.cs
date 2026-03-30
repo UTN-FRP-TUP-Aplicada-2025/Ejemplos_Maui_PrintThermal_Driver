@@ -301,6 +301,28 @@ public partial class MainPage : ContentPage
         }
     }
 
+    // ─── Motor DSL: Vista previa MAUI ───
+
+    private void OnMauiPreviewClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            ShowMessage("Generando vista previa MAUI...");
+
+            var profile = new DeviceProfile("thermal_58mm", 32, "text");
+            var layouted = _engine.RenderLayout(TicketDsl.Template, TicketDsl.GetSampleData(), profile);
+
+            MauiPreview.Document = layouted;
+            MauiPreviewFrame.IsVisible = true;
+            ShowMessage("Vista previa MAUI generada");
+        }
+        catch (Exception ex)
+        {
+            ShowMessage("Error al generar vista previa MAUI");
+            OutputLabel.Text = $"Excepción: {ex.Message}";
+        }
+    }
+
     // ─── Motor DSL: Imprimir por BT ───
 
     private async void OnPrintClicked(object sender, EventArgs e)

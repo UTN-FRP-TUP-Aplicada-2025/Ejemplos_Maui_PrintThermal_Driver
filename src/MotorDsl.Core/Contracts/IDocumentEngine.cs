@@ -27,4 +27,11 @@ public interface IDocumentEngine
     /// <param name="profile">Device profile defining rendering constraints</param>
     /// <returns>Render result with output and any warnings/errors</returns>
     RenderResult Render(DocumentTemplate template, object data, DeviceProfile profile);
+
+    /// <summary>
+    /// Executes Parse → Evaluate → Layout without rendering.
+    /// Returns the LayoutedDocument for UI preview.
+    /// Sprint 06 | TK-45
+    /// </summary>
+    LayoutedDocument RenderLayout(string templateDsl, object data, DeviceProfile profile);
 }
