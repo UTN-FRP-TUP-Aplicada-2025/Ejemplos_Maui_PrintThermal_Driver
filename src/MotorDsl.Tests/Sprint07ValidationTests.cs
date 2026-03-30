@@ -207,4 +207,60 @@ public class Sprint07ValidationTests
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, e => e.Field == "Name");
     }
+
+    // ═══════════════════════════════════════════
+    // Categoría 4 — Pipeline integration (TK-51/54/56)
+    // ═══════════════════════════════════════════
+
+    [Fact]
+    public void DocumentEngine_InvalidTemplate_ReturnsRenderResultWithErrors()
+    {
+        var parser = new MotorDsl.Parser.DslParser();
+        var evaluator = new MotorDsl.Core.Evaluators.Evaluator();
+        var layoutEngine = new MotorDsl.Core.Layout.LayoutEngine();
+        var registry = new MotorDsl.Core.Engine.RendererRegistry();
+        registry.Register(new MotorDsl.Rendering.TextRenderer());
+        var templateValidator = new MotorDsl.Core.Validation.TemplateValidator();
+
+        var engine = new MotorDsl.Core.Engine.DocumentEngine(
+            parser, evaluator, layoutEngine, registry,
+            templateValidator: templateValidator);
+
+        var profile = new DeviceProfile("test", 32, "text");
+        var result = engine.Render("{ esto no es JSON válido {{{", new { }, profile);
+
+        Assert.False(result.IsSuccessful);
+        Assert.Contains(result.Errors, e => e.Contains("TemplateValidation"));
+    }
+
+    [Fact]
+    public void DocumentEngine_InvalidProfile_ReturnsRenderResultWithErrors()
+    {
+        var parser = new MotorDsl.Parser.DslParser();
+        var evaluator = new MotorDsl.Core.Evaluators.Evaluator();
+        var layoutEngine = new MotorDsl.Core.Layout.LayoutEngine();
+        var registry = new MotorDsl.Core.Engine.RendererRegistry();
+        registry.Register(new MotorDsl.Rendering.TextRenderer());
+        var profileValidator = new MotorDsl.Core.Validation.ProfileValidator();
+
+        var engine = new MotorDsl.Core.Engine.DocumentEngine(
+            parser, evaluator, layoutEngine, registry,
+            profileValidator: profileValidator);
+
+        var dsl = """
+        {
+            "id": "test-001",
+            "version": "1.0",
+            "root": {
+                "type": "text",
+                "text": "Hola"
+            }
+        }
+        """;
+        var profile = new DeviceProfile("test", 0, "text");
+        var result = engine.Render(dsl, new { }, profile);
+
+        Assert.False(result.IsSuccessful);
+        Assert.Contains(result.Errors, e => e.Contains("ProfileValidation"));
+    }
 }

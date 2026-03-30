@@ -24,6 +24,8 @@ public static class MotorDslServiceCollectionExtensions
             return registry;
         });
         services.AddSingleton<IDataValidator, DataValidator>();
+        services.AddSingleton<ITemplateValidator, TemplateValidator>();
+        services.AddSingleton<IProfileValidator, ProfileValidator>();
         services.AddSingleton<IDocumentEngine, DocumentEngine>();
         return new MotorDslBuilder(services);
     }

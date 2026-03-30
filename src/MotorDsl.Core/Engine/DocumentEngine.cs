@@ -15,22 +15,52 @@ public class DocumentEngine : IDocumentEngine
     private readonly ILayoutEngine _layoutEngine;
     private readonly IRendererRegistry _rendererRegistry;
     private readonly IDataValidator? _validator;
+    private readonly ITemplateValidator? _templateValidator;
+    private readonly IProfileValidator? _profileValidator;
 
-    public DocumentEngine(IDslParser parser, IEvaluator evaluator, ILayoutEngine layoutEngine, IRendererRegistry rendererRegistry, IDataValidator? validator = null)
+    public DocumentEngine(IDslParser parser, IEvaluator evaluator, ILayoutEngine layoutEngine, IRendererRegistry rendererRegistry, IDataValidator? validator = null, ITemplateValidator? templateValidator = null, IProfileValidator? profileValidator = null)
     {
         _parser = parser;
         _evaluator = evaluator;
         _layoutEngine = layoutEngine;
         _rendererRegistry = rendererRegistry;
         _validator = validator;
+        _templateValidator = templateValidator;
+        _profileValidator = profileValidator;
     }
 
     public RenderResult Render(string templateDsl, object data, DeviceProfile profile)
     {
         try
         {
+            // TK-51: Validate template DSL before parsing
+            var warnings = new List<string>();
+            if (_templateValidator != null)
+            {
+                var templateValidation = _templateValidator.ValidateTemplate(templateDsl);
+                foreach (var err in templateValidation.Errors)
+                {
+                    if (err.Severity == ValidationSeverity.Error)
+                    {
+                        var errorResult = new RenderResult(profile.RenderTarget);
+                        foreach (var e in templateValidation.Errors.Where(e => e.Severity == ValidationSeverity.Error))
+                            errorResult.AddError($"TemplateValidation: [{e.Type}] {e.Field} \u2014 {e.Message}");
+                        errorResult.Output = "";
+                        return errorResult;
+                    }
+                    if (err.Severity == ValidationSeverity.Warning)
+                        warnings.Add($"TemplateValidation: [{err.Type}] {err.Field} \u2014 {err.Message}");
+                }
+            }
+
             var template = _parser.Parse(templateDsl);
-            return Render(template, data, profile);
+            var result = Render(template, data, profile);
+
+            // TK-56: Propagate accumulated warnings
+            foreach (var w in warnings)
+                result.AddWarning(w);
+
+            return result;
         }
         catch (Exception ex)
         {
@@ -59,6 +89,20 @@ public class DocumentEngine : IDocumentEngine
                 }
             }
 
+            // TK-54: Validate profile before layout
+            if (_profileValidator != null)
+            {
+                var profileValidation = _profileValidator.ValidateProfile(profile);
+                if (!profileValidation.IsValid)
+                {
+                    var errorResult = new RenderResult(profile.RenderTarget);
+                    foreach (var e in profileValidation.Errors.Where(e => e.Severity == ValidationSeverity.Error))
+                        errorResult.AddError($"ProfileValidation: [{e.Type}] {e.Field} \u2014 {e.Message}");
+                    errorResult.Output = "";
+                    return errorResult;
+                }
+            }
+
             // Stage 2: Evaluate
             var evaluated = _evaluator.Evaluate(template.Root!, data);
 
@@ -80,6 +124,15 @@ public class DocumentEngine : IDocumentEngine
 
     public LayoutedDocument RenderLayout(string templateDsl, object data, DeviceProfile profile)
     {
+        // TK-51: Validate template DSL
+        if (_templateValidator != null)
+        {
+            var templateValidation = _templateValidator.ValidateTemplate(templateDsl);
+            if (templateValidation.Errors.Any(e => e.Severity == ValidationSeverity.Error))
+                throw new InvalidOperationException(
+                    "Template validation failed: " + string.Join("; ", templateValidation.Errors.Where(e => e.Severity == ValidationSeverity.Error).Select(e => e.Message)));
+        }
+
         var template = _parser.Parse(templateDsl);
 
         if (_validator != null)
@@ -88,6 +141,15 @@ public class DocumentEngine : IDocumentEngine
             if (!validation.IsValid)
                 throw new InvalidOperationException(
                     "Validation failed: " + string.Join("; ", validation.Errors.Select(e => e.Message)));
+        }
+
+        // TK-54: Validate profile before layout
+        if (_profileValidator != null)
+        {
+            var profileValidation = _profileValidator.ValidateProfile(profile);
+            if (profileValidation.Errors.Any(e => e.Severity == ValidationSeverity.Error))
+                throw new InvalidOperationException(
+                    "Profile validation failed: " + string.Join("; ", profileValidation.Errors.Where(e => e.Severity == ValidationSeverity.Error).Select(e => e.Message)));
         }
 
         var evaluated = _evaluator.Evaluate(template.Root!, data);
