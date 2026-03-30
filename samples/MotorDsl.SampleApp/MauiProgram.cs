@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
+using MotorDsl.Core.Contracts;
 using MotorDsl.Core.Models;
+using MotorDsl.Core.Printing;
 using MotorDsl.Extensions;
 using MotorDsl.SampleApp.Pages;
 using MotorDsl.SampleApp.Services;
@@ -32,6 +34,7 @@ public static class MauiProgram
             });
 
         // Servicios de la app
+        builder.Services.AddSingleton<IPrintErrorHandler, DefaultPrintErrorHandler>();
         builder.Services.AddSingleton<IThermalPrinterService, ThermalPrinterService>();
         builder.Services.AddTransient<MainPage>();
 

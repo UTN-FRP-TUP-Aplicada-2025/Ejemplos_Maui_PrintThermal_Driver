@@ -1,3 +1,5 @@
+using MotorDsl.Core.Models;
+
 namespace MotorDsl.SampleApp.Services;
 
 /// <summary>
@@ -16,8 +18,9 @@ public interface IThermalPrinterService
 
     /// <summary>
     /// Envía bytes crudos (ESC/POS) a la impresora conectada.
+    /// Soporta reintentos con backoff exponencial.
     /// </summary>
-    Task SendBytesAsync(byte[] data, PrinterProfile? profile = null);
+    Task SendBytesAsync(byte[] data, PrinterProfile? profile = null, PrintRetryOptions? retryOptions = null);
 }
 
 /// <summary>

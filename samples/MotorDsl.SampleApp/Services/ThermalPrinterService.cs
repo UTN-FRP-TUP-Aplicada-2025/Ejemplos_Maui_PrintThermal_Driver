@@ -6,12 +6,16 @@ using Java.Util;
 using Microsoft.Maui.ApplicationModel;
 using AndroidBluetoothDevice = Android.Bluetooth.BluetoothDevice;
 #endif
+using MotorDsl.Core.Contracts;
+using MotorDsl.Core.Models;
 
 namespace MotorDsl.SampleApp.Services;
 
 /// <summary>
 /// Implementación del servicio de impresión térmica para Android.
 /// Solo transporta bytes crudos — el formateo ESC/POS lo genera el motor DSL.
+/// Soporta retry con backoff exponencial y reconexión BT automática.
+/// Sprint 06 | TK-41, TK-42
 /// </summary>
 public class ThermalPrinterService : IThermalPrinterService
 {
@@ -21,10 +25,14 @@ public class ThermalPrinterService : IThermalPrinterService
     private System.IO.Stream? _outputStream;
 #endif
 
+    private readonly IPrintErrorHandler _errorHandler;
+    private string? _lastDeviceAddress;
+
     public bool IsConnected { get; private set; }
 
-    public ThermalPrinterService()
+    public ThermalPrinterService(IPrintErrorHandler errorHandler)
     {
+        _errorHandler = errorHandler;
 #if ANDROID
         _bluetoothAdapter = BluetoothAdapter.DefaultAdapter;
 #endif
@@ -98,6 +106,7 @@ public class ThermalPrinterService : IThermalPrinterService
             _outputStream = _socket.OutputStream;
 
             IsConnected = true;
+            _lastDeviceAddress = deviceAddress;
             return true;
         }
         catch (Exception ex)
@@ -141,14 +150,50 @@ public class ThermalPrinterService : IThermalPrinterService
 #endif
     }
 
-    public async Task SendBytesAsync(byte[] data, PrinterProfile? profile = null)
+    public async Task SendBytesAsync(byte[] data, PrinterProfile? profile = null, PrintRetryOptions? retryOptions = null)
     {
 #if ANDROID
-        if (_outputStream == null)
-            throw new InvalidOperationException("No hay una impresora conectada");
-
         profile ??= PrinterProfile.Thermal58mm;
+        retryOptions ??= new PrintRetryOptions();
 
+        for (int attempt = 1; attempt <= retryOptions.MaxRetries; attempt++)
+        {
+            try
+            {
+                if (_outputStream == null)
+                    throw new InvalidOperationException("No hay una impresora conectada");
+
+                await SendBytesInternalAsync(data, profile);
+
+                _errorHandler.OnPrintSuccess(attempt);
+                return;
+            }
+            catch (Exception ex)
+            {
+                var error = PrintError.FromException(ex, attempt, retryOptions.MaxRetries);
+                var shouldRetry = await _errorHandler.HandleErrorAsync(error);
+
+                if (!shouldRetry || attempt >= retryOptions.MaxRetries)
+                    throw new Exception($"Print failed after {attempt} attempt(s): {error.Message}", ex);
+
+                _errorHandler.OnRetryAttempt(error);
+
+                // Backoff exponencial
+                int delayMs = retryOptions.InitialDelayMs * (1 << (attempt - 1));
+                await Task.Delay(delayMs);
+
+                // Reconexión automática si se perdió la conexión
+                await TryReconnectAsync();
+            }
+        }
+#else
+        await Task.CompletedTask;
+#endif
+    }
+
+#if ANDROID
+    private async Task SendBytesInternalAsync(byte[] data, PrinterProfile profile)
+    {
         // Dar tiempo a la impresora para estar lista
         await Task.Delay(profile.InitDelayMs);
 
@@ -156,7 +201,7 @@ public class ThermalPrinterService : IThermalPrinterService
 
         foreach (var line in lines)
         {
-            await _outputStream.WriteAsync(line, 0, line.Length);
+            await _outputStream!.WriteAsync(line, 0, line.Length);
             await _outputStream.FlushAsync();
             int delayMs = GetDelayForLine(line, profile);
             await Task.Delay(delayMs);
@@ -164,10 +209,26 @@ public class ThermalPrinterService : IThermalPrinterService
 
         // Delay final
         await Task.Delay(profile.FinalDelayMs);
-#else
-        await Task.CompletedTask;
-#endif
     }
+
+    private async Task TryReconnectAsync()
+    {
+        if (IsConnected && _socket?.IsConnected == true)
+            return;
+
+        if (string.IsNullOrEmpty(_lastDeviceAddress))
+            return;
+
+        try
+        {
+            await ConnectAsync(_lastDeviceAddress);
+        }
+        catch
+        {
+            // Reconnection failed — next retry will handle it
+        }
+    }
+#endif
 
     private static int GetDelayForLine(byte[] line, PrinterProfile profile)
     {
