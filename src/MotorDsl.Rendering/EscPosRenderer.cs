@@ -42,6 +42,14 @@ public class EscPosRenderer : IRenderer
                         continue;
                     }
 
+                    // Barcode EAN-13 — emit GS k 2 sequence
+                    if (layoutInfo.DeviceMetadata.TryGetValue("is_barcode", out var bcFlag) && bcFlag is true)
+                    {
+                        var barcodeData = layoutInfo.DeviceMetadata["barcode_data"]?.ToString() ?? "";
+                        buffer.AddRange(EmitBarcodeEan13(barcodeData, GetEncoding(profile)));
+                        continue;
+                    }
+
                     // Emit alignment command
                     buffer.AddRange(GetAlignmentCommand(layoutInfo.Alignment));
 
@@ -113,6 +121,18 @@ public class EscPosRenderer : IRenderer
         buffer.AddRange(urlBytes);
         // Print QR code
         buffer.AddRange(EscPosCommands.QrPrint);
+
+        return buffer.ToArray();
+    }
+
+    private static byte[] EmitBarcodeEan13(string data, Encoding encoding)
+    {
+        var buffer = new List<byte>();
+
+        // GS k 2 — EAN-13 barcode (mode 2, NUL-terminated)
+        buffer.AddRange(EscPosCommands.BarcodeEan13);
+        buffer.AddRange(encoding.GetBytes(data));
+        buffer.Add(0x00); // NUL terminator
 
         return buffer.ToArray();
     }

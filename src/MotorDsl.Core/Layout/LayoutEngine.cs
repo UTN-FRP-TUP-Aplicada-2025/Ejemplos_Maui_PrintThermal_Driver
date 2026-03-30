@@ -112,6 +112,12 @@ public class LayoutEngine : ILayoutEngine
             layoutInfo.DeviceMetadata["is_qr"] = true;
             layoutInfo.DeviceMetadata["qr_data"] = imageNode.Source;
         }
+        else if (imageNode.ImageType?.ToLower() == "barcode")
+        {
+            layoutInfo.WrappedText = $"[BARCODE: {imageNode.Source}]";
+            layoutInfo.DeviceMetadata["is_barcode"] = true;
+            layoutInfo.DeviceMetadata["barcode_data"] = imageNode.Source;
+        }
         else
         {
             layoutInfo.WrappedText = $"[IMG: {imageNode.Source}]";

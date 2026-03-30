@@ -37,6 +37,11 @@ public static class EscPosCommands
     /// <summary>ESC d n — Feed n lines</summary>
     public static byte[] FeedLines(byte n) => new byte[] { 0x1B, 0x64, n };
 
+    // ─── Barcode EAN-13 — GS k ───
+
+    /// <summary>GS k 2 — Print barcode EAN-13 (mode 2, NUL-terminated)</summary>
+    public static readonly byte[] BarcodeEan13 = { 0x1D, 0x6B, 0x02 };
+
     // ─── QR Code — GS ( k ───
 
     /// <summary>GS ( k — Set QR model 2</summary>
