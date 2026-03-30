@@ -23,6 +23,9 @@ El pipeline cubre:
 - Análisis de calidad  
 - Empaquetado como NuGet (.nupkg)  
 - Publicación en registry (NuGet local o remoto)  
+- Build y publicación de apps Android (APK)  
+- Build de app iOS (simulador .app.zip)  
+- Scripts de desarrollo local (.bat)  
 
 Fuera de alcance en v1.0:
 
@@ -116,7 +119,6 @@ v1.2.0
 
 * MotorDsl.Core
 * MotorDsl.Parser
-* MotorDsl.Evaluator
 * MotorDsl.Rendering
 * MotorDsl.Extensions
 
@@ -204,6 +206,25 @@ dotnet nuget push MotorDsl.1.2.0.nupkg --api-key <API_KEY> --source <URL>
 
 ---
 
+### 5.7 Stage: CD Android
+
+**Trigger:** push main o tag v*
+
+- Genera APK de SampleApp y MultaApp
+- Artifact: *-APK con retención 7 días
+
+---
+
+### 5.8 Stage: CD iOS (simulador)
+
+**Trigger:** push main o tag v*
+
+- Solo SampleApp (sin BT)
+- Genera .app.zip para simulador iossimulator-arm64
+- Artifact: *.app.zip con retención 1 día
+
+---
+
 ## 6. Gates de calidad
 
 El pipeline falla si ocurre cualquiera de los siguientes:
@@ -286,26 +307,16 @@ Se debe registrar:
 
 ## 11. Ejemplo simplificado (pseudo YAML)
 
-```yaml
-stages:
-  - build
-  - test
-  - pack
-  - publish
-
 build:
-  script: dotnet build
-
 test:
-  script: dotnet test
-
 pack:
-  script: dotnet pack -c Release
-
 publish:
-  script: dotnet nuget push *.nupkg --api-key $NUGET_API_KEY --source $NUGET_SOURCE
-  only:
-    - tags
+```text
+.github/workflows/
+├── ci.yml              ← tests en cada PR y push
+├── cd-android.yml      ← APK SampleApp + MultaApp  
+├── cd-ios-sampleapp.yml ← .app.zip simulador iOS
+└── cd-nuget.yml        ← NuGet en tags v*
 ```
 
 ---
@@ -325,12 +336,15 @@ publish:
 
 Planeado para v2.x:
 
-* Publicación automática en NuGet.org
-* Firma de paquetes
-* Validación de compatibilidad (breaking changes)
-* Escaneo de seguridad (SCA)
-* Generación automática de changelog
-* Multi-target frameworks
+- Publicación automática en NuGet.org
+- Firma de paquetes
+- Validación de compatibilidad (breaking changes)
+- Escaneo de seguridad (SCA)
+- Generación automática de changelog
+- Multi-target frameworks
+- Firma de APK con keystore propio
+- Publicación en Google Play (AAB)
+- Scripts .bat para desarrollo local Windows
 
 ---
 

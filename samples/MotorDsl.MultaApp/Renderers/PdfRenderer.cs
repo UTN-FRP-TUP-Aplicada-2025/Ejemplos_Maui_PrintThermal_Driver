@@ -15,10 +15,12 @@ public class PdfRenderer : IRenderer
 {
     public string Target => "pdf";
 
+
     public RenderResult Render(LayoutedDocument document, DeviceProfile profile)
     {
         try
         {
+            // Inicializar licencia QuestPDF antes de cualquier uso
             QuestPDF.Settings.License = LicenseType.Community;
 
             var result = new RenderResult(Target);

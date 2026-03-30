@@ -7,6 +7,7 @@ using MotorDsl.MultaApp.Pages;
 using MotorDsl.MultaApp.Renderers;
 using MotorDsl.MultaApp.Services;
 using MotorDsl.MultaApp.Templates;
+
 using QuestPDF.Infrastructure;
 
 namespace MotorDsl.MultaApp;
@@ -15,7 +16,8 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
-        QuestPDF.Settings.License = LicenseType.Community;
+        // Inicializar licencia QuestPDF antes de cualquier uso
+        QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
         var builder = MauiApp.CreateBuilder();
         builder
