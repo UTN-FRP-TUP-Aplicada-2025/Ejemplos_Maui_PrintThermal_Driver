@@ -21,6 +21,8 @@ public static class MotorDslServiceCollectionExtensions
             var registry = new RendererRegistry();
             registry.Register(new TextRenderer());
             registry.Register(new EscPosRenderer());
+            foreach (var renderer in sp.GetServices<IRenderer>())
+                registry.Register(renderer);
             return registry;
         });
         services.AddSingleton<IDataValidator, DataValidator>();

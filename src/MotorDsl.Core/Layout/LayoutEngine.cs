@@ -118,6 +118,16 @@ public class LayoutEngine : ILayoutEngine
             layoutInfo.DeviceMetadata["is_barcode"] = true;
             layoutInfo.DeviceMetadata["barcode_data"] = imageNode.Source;
         }
+        else if (imageNode.Source.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+        {
+            var truncated = imageNode.Source.Length > 20
+                ? imageNode.Source[..20]
+                : imageNode.Source;
+            layoutInfo.WrappedText = $"[BITMAP: {truncated}]";
+            layoutInfo.DeviceMetadata["is_bitmap"] = true;
+            layoutInfo.DeviceMetadata["bitmap_source"] = imageNode.Source;
+            layoutInfo.DeviceMetadata["bitmap_width"] = imageNode.Width ?? profile.Width;
+        }
         else
         {
             layoutInfo.WrappedText = $"[IMG: {imageNode.Source}]";

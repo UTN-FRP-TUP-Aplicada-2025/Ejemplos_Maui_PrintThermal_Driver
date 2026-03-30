@@ -32,4 +32,10 @@ public class MotorDslBuilder
         Services.AddSingleton<IDeviceProfileProvider>(provider);
         return this;
     }
+
+    public MotorDslBuilder AddRenderer<TRenderer>() where TRenderer : class, IRenderer
+    {
+        Services.AddSingleton<IRenderer, TRenderer>();
+        return this;
+    }
 }
