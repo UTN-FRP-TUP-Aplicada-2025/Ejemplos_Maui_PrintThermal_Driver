@@ -12,4 +12,5 @@ public class LayoutedDocument
     public int TotalHeight { get; set; }
     public DeviceProfile? DeviceProfile { get; set; }
     public Dictionary<string, object> LayoutMetadata { get; set; } = new();
+    public List<string> Warnings { get; } = new();
 }

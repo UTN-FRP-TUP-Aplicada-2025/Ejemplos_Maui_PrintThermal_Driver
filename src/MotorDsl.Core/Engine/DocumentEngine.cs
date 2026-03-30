@@ -117,6 +117,10 @@ public class DocumentEngine : IDocumentEngine
             var renderer = GetRenderer(profile.RenderTarget);
             var renderResult = renderer.Render(layouted, profile);
 
+            // CU-23: Propagate layout capability warnings
+            foreach (var w in layouted.Warnings)
+                renderResult.AddWarning(w);
+
             // TK-56: Propagate data validation warnings
             foreach (var w in dataWarnings)
                 renderResult.AddWarning(w);

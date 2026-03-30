@@ -98,35 +98,62 @@ public class LayoutEngine : ILayoutEngine
         }
         else if (node is ImageNode imageNode)
         {
-            ApplyImageNodeLayout(imageNode, layoutInfo, profile);
+            ApplyImageNodeLayout(imageNode, layoutInfo, profile, layoutedDoc);
             layoutedDoc.NodeLayoutInfo[nodeId] = layoutInfo;
             currentLine += layoutInfo.Height;
         }
     }
 
-    private void ApplyImageNodeLayout(ImageNode imageNode, LayoutInfo layoutInfo, DeviceProfile profile)
+    private void ApplyImageNodeLayout(ImageNode imageNode, LayoutInfo layoutInfo, DeviceProfile profile, LayoutedDocument layoutedDoc)
     {
         if (imageNode.ImageType?.ToLower() == "qrcode")
         {
-            layoutInfo.WrappedText = $"[QR: {imageNode.Source}]";
-            layoutInfo.DeviceMetadata["is_qr"] = true;
-            layoutInfo.DeviceMetadata["qr_data"] = imageNode.Source;
+            if (IsCapabilityExplicitlyFalse(profile, "supports_qrcode"))
+            {
+                layoutInfo.WrappedText = imageNode.Source;
+                layoutedDoc.Warnings.Add("QR degradado: dispositivo no soporta QR");
+            }
+            else
+            {
+                layoutInfo.WrappedText = $"[QR: {imageNode.Source}]";
+                layoutInfo.DeviceMetadata["is_qr"] = true;
+                layoutInfo.DeviceMetadata["qr_data"] = imageNode.Source;
+            }
         }
         else if (imageNode.ImageType?.ToLower() == "barcode")
         {
-            layoutInfo.WrappedText = $"[BARCODE: {imageNode.Source}]";
-            layoutInfo.DeviceMetadata["is_barcode"] = true;
-            layoutInfo.DeviceMetadata["barcode_data"] = imageNode.Source;
+            if (IsCapabilityExplicitlyFalse(profile, "supports_barcode"))
+            {
+                layoutInfo.WrappedText = $"[BARCODE: {imageNode.Source}]";
+                layoutedDoc.Warnings.Add("Barcode degradado: dispositivo no soporta barcode");
+            }
+            else
+            {
+                layoutInfo.WrappedText = $"[BARCODE: {imageNode.Source}]";
+                layoutInfo.DeviceMetadata["is_barcode"] = true;
+                layoutInfo.DeviceMetadata["barcode_data"] = imageNode.Source;
+            }
         }
         else if (imageNode.Source.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
         {
-            var truncated = imageNode.Source.Length > 20
-                ? imageNode.Source[..20]
-                : imageNode.Source;
-            layoutInfo.WrappedText = $"[BITMAP: {truncated}]";
-            layoutInfo.DeviceMetadata["is_bitmap"] = true;
-            layoutInfo.DeviceMetadata["bitmap_source"] = imageNode.Source;
-            layoutInfo.DeviceMetadata["bitmap_width"] = imageNode.Width ?? profile.Width;
+            if (IsCapabilityExplicitlyFalse(profile, "supports_images"))
+            {
+                var truncated = imageNode.Source.Length > 20
+                    ? imageNode.Source[..20]
+                    : imageNode.Source;
+                layoutInfo.WrappedText = $"[IMG-DEGRADED: {truncated}]";
+                layoutedDoc.Warnings.Add("Image degradado: dispositivo no soporta imágenes bitmap");
+            }
+            else
+            {
+                var truncated = imageNode.Source.Length > 20
+                    ? imageNode.Source[..20]
+                    : imageNode.Source;
+                layoutInfo.WrappedText = $"[BITMAP: {truncated}]";
+                layoutInfo.DeviceMetadata["is_bitmap"] = true;
+                layoutInfo.DeviceMetadata["bitmap_source"] = imageNode.Source;
+                layoutInfo.DeviceMetadata["bitmap_width"] = imageNode.Width ?? profile.Width;
+            }
         }
         else
         {
@@ -134,6 +161,12 @@ public class LayoutEngine : ILayoutEngine
         }
         layoutInfo.Width = profile.Width;
         layoutInfo.Height = 1;
+    }
+
+    private static bool IsCapabilityExplicitlyFalse(DeviceProfile profile, string capabilityName)
+    {
+        var value = profile.GetCapability(capabilityName);
+        return value is bool b && !b;
     }
 
     private void ApplyTableNodeLayout(TableNode tableNode, ref int currentLine, LayoutedDocument layoutedDoc, DeviceProfile profile)
