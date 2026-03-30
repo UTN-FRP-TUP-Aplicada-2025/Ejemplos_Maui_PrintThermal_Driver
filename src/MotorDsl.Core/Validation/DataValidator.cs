@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using MotorDsl.Core.Contracts;
 using MotorDsl.Core.Models;
@@ -81,10 +82,48 @@ public class DataValidator : IDataValidator
             var resolved = _resolver.Resolve(data, field);
             if (resolved == null)
             {
-                result.AddError(field, ValidationErrorType.MissingField,
-                    $"Field '{field}' referenced in text binding not found in data", "text");
+                if (FieldExistsButNull(data, field))
+                {
+                    result.Errors.Add(new ValidationError(
+                        field, ValidationErrorType.MissingField,
+                        $"Field '{field}' exists but is null", "text")
+                    {
+                        Severity = ValidationSeverity.Warning
+                    });
+                }
+                else
+                {
+                    result.AddError(field, ValidationErrorType.MissingField,
+                        $"Field '{field}' referenced in text binding not found in data", "text");
+                }
             }
         }
+    }
+
+    private bool FieldExistsButNull(object? data, string field)
+    {
+        if (data == null) return false;
+
+        var parts = field.Split('.');
+        object? current = data;
+
+        // Navigate to the parent of the last segment
+        for (int i = 0; i < parts.Length - 1; i++)
+        {
+            current = _resolver.Resolve(current, parts[i]);
+            if (current == null) return false;
+        }
+
+        var lastPart = parts[^1];
+
+        if (current is IDictionary<string, object> dict1)
+            return dict1.ContainsKey(lastPart);
+        if (current is IDictionary<string, object?> dict2)
+            return dict2.ContainsKey(lastPart);
+
+        var prop = current.GetType().GetProperty(lastPart,
+            BindingFlags.Public | BindingFlags.Instance);
+        return prop != null;
     }
 
     private void ValidateLoopNode(LoopNode loopNode, object? data, ValidationResult result, HashSet<string> loopAliases)

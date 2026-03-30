@@ -72,7 +72,7 @@ public class ValidationError
 /// </summary>
 public class ValidationResult
 {
-    public bool IsValid => Errors.Count == 0;
+    public bool IsValid => !Errors.Any(e => e.Severity == ValidationSeverity.Error);
     public List<ValidationError> Errors { get; } = new();
 
     public void AddError(string field, ValidationErrorType type, string message, string nodeType)

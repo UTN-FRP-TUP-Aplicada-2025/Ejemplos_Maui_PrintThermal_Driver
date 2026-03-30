@@ -76,17 +76,21 @@ public class DocumentEngine : IDocumentEngine
         try
         {
             // Stage 1.5: Validate (optional)
+            var dataWarnings = new List<string>();
             if (_validator != null)
             {
                 var validation = _validator.Validate(template.Root!, data);
                 if (!validation.IsValid)
                 {
                     var errorResult = new RenderResult(profile.RenderTarget);
-                    foreach (var error in validation.Errors)
+                    foreach (var error in validation.Errors.Where(e => e.Severity == ValidationSeverity.Error))
                         errorResult.AddError($"Validation: [{error.Type}] {error.Field} \u2014 {error.Message}");
                     errorResult.Output = "";
                     return errorResult;
                 }
+                // TK-55/56: Collect data validation warnings
+                foreach (var w in validation.Errors.Where(e => e.Severity == ValidationSeverity.Warning))
+                    dataWarnings.Add($"DataValidation: [{w.Type}] {w.Field} \u2014 {w.Message}");
             }
 
             // TK-54: Validate profile before layout
@@ -111,7 +115,13 @@ public class DocumentEngine : IDocumentEngine
 
             // Stage 4: Render
             var renderer = GetRenderer(profile.RenderTarget);
-            return renderer.Render(layouted, profile);
+            var renderResult = renderer.Render(layouted, profile);
+
+            // TK-56: Propagate data validation warnings
+            foreach (var w in dataWarnings)
+                renderResult.AddWarning(w);
+
+            return renderResult;
         }
         catch (Exception ex)
         {
