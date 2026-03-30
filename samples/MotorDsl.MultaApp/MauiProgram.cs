@@ -7,6 +7,7 @@ using MotorDsl.MultaApp.Pages;
 using MotorDsl.MultaApp.Renderers;
 using MotorDsl.MultaApp.Services;
 using MotorDsl.MultaApp.Templates;
+using QuestPDF.Infrastructure;
 
 namespace MotorDsl.MultaApp;
 
@@ -14,6 +15,8 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
+        QuestPDF.Settings.License = LicenseType.Community;
+
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
@@ -28,6 +31,8 @@ public static class MauiProgram
             .AddTemplates(t =>
             {
                 t.Add("acta-infraccion", MultaDsl.Template);
+                t.Add("ticket-simple", TicketSimpleDsl.Template);
+                t.Add("comprobante-pago", ComprobanteDsl.Template);
             })
             .AddProfiles(p =>
             {

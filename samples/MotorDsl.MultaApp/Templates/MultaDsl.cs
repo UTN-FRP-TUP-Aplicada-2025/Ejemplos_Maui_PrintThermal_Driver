@@ -2,7 +2,7 @@ namespace MotorDsl.MultaApp.Templates;
 
 /// <summary>
 /// Template DSL del acta de infracción de tránsito y datos de ejemplo.
-/// Sprint 08 | TK-63
+/// Sprint 08 — Rediseño completo.
 /// </summary>
 public static class MultaDsl
 {
@@ -15,29 +15,14 @@ public static class MultaDsl
         "layout": "vertical",
         "children": [
           {
-            "type": "image",
-            "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABU0lEQVR4nO2Vu0oDQRSGv9lsNokxEUUbwUawsLG0sfMBfAFfwNrCwsLKB7CxsrBQC+8XvKBGE41ZL7uzOzOSYpfdb2b+c/7/nJkFh//OoKkBtgJLwApQBy6AG8WAJYf/qJOlrOuBC+AcWJLEfOATCp7mgHlJzHfjGSNwCMwD0wlcxAD3fhGbqpxc+lXgKi/CRtYJCEgCJ2RB3NdiYINYAc4kvhXgEzhPz4FT4EoSc1K7L0H8NLTCANMuUMnMt/g56b2fUMfbovmZnzBcQJseGpfACeAxsS/B7wLQkkSb+MCvgPMSWI+GRv4FbwHrCYxnw4GJvHW3p0+2BeeA2Yi3qVkejwqF2GrKRenKD/RG2e4ybyHewbVnmz25QnwVpx4nLiB1iLeuJN4WPbXv6Ot3xKPwKHkpjP+0YDg0pv/4KfScx3A4HAr4FbSew3xA0+U4n5PxD/ACdkdx8asnkuAAAAAElFTkSuQmCC",
-            "width": 32,
-            "height": 32
-          },
-          {
             "type": "text",
-            "text": ""
-          },
-          {
-            "type": "text",
-            "text": "ACTA DE INFRACCIÓN",
+            "text": "MUNICIPALIDAD DE EJEMPLO",
             "style": { "align": "center", "bold": true }
           },
           {
             "type": "text",
-            "text": "Municipalidad de {{municipio}}",
+            "text": "DIRECCIÓN DE TRÁNSITO",
             "style": { "align": "center" }
-          },
-          {
-            "type": "text",
-            "text": "Acta N° {{actaNumero}}    Fecha: {{fecha}}",
-            "style": { "bold": true }
           },
           {
             "type": "text",
@@ -45,16 +30,29 @@ public static class MultaDsl
           },
           {
             "type": "text",
-            "text": "DATOS DEL INFRACTOR",
+            "text": "ACTA DE INFRACCIÓN N°: {{nroActa}}",
             "style": { "bold": true }
           },
           {
             "type": "text",
-            "text": "Nombre: {{infractor.nombre}}"
+            "text": "Fecha: {{fecha}}  Hora: {{hora}}"
           },
           {
             "type": "text",
-            "text": "DNI:    {{infractor.dni}}"
+            "text": "================================"
+          },
+          {
+            "type": "text",
+            "text": "DATOS DEL INFRACTOR:",
+            "style": { "bold": true }
+          },
+          {
+            "type": "text",
+            "text": "Apellido y Nombre: {{infractor.apellido}} {{infractor.nombre}}"
+          },
+          {
+            "type": "text",
+            "text": "DNI: {{infractor.dni}}"
           },
           {
             "type": "text",
@@ -66,7 +64,7 @@ public static class MultaDsl
           },
           {
             "type": "text",
-            "text": "DATOS DEL VEHÍCULO",
+            "text": "VEHÍCULO:",
             "style": { "bold": true }
           },
           {
@@ -75,11 +73,7 @@ public static class MultaDsl
           },
           {
             "type": "text",
-            "text": "Marca:   {{vehiculo.marca}}"
-          },
-          {
-            "type": "text",
-            "text": "Modelo:  {{vehiculo.modelo}}"
+            "text": "Marca/Modelo: {{vehiculo.marca}} {{vehiculo.modelo}} {{vehiculo.anio}}"
           },
           {
             "type": "text",
@@ -87,19 +81,31 @@ public static class MultaDsl
           },
           {
             "type": "text",
-            "text": "INFRACCIONES",
+            "text": "INFRACCIONES COMETIDAS:",
             "style": { "bold": true }
           },
           {
-            "type": "table",
-            "columns": [
-              { "header": "Art.", "width": 5 },
-              { "header": "Descripción", "width": 14 },
-              { "header": "Pts", "width": 4 },
-              { "header": "Monto", "width": 9 }
-            ],
+            "type": "loop",
             "source": "infracciones",
-            "fields": ["articulo", "descripcion", "puntos", "monto"]
+            "itemAlias": "inf",
+            "body": {
+              "type": "container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "Art. {{inf.articulo}} - {{inf.descripcion}}"
+                },
+                {
+                  "type": "text",
+                  "text": "Puntos: {{inf.puntos}}  Monto: ${{inf.monto}}"
+                },
+                {
+                  "type": "text",
+                  "text": ""
+                }
+              ]
+            }
           },
           {
             "type": "text",
@@ -108,45 +114,11 @@ public static class MultaDsl
           {
             "type": "text",
             "text": "TOTAL A PAGAR: ${{totalMonto}}",
-            "style": { "align": "right", "bold": true }
+            "style": { "align": "center", "bold": true }
           },
           {
             "type": "text",
-            "text": "Puntos totales: {{totalPuntos}}",
-            "style": { "align": "right" }
-          },
-          {
-            "type": "text",
-            "text": ""
-          },
-          {
-            "type": "conditional",
-            "expression": "{{permitePagoOnline}}",
-            "trueBranch": {
-              "type": "container",
-              "layout": "vertical",
-              "children": [
-                {
-                  "type": "text",
-                  "text": "Pague online escaneando el QR:",
-                  "style": { "align": "center" }
-                },
-                {
-                  "type": "image",
-                  "source": "{{qrPagoUrl}}",
-                  "imageType": "qrcode"
-                }
-              ]
-            },
-            "falseBranch": {
-              "type": "text",
-              "text": "Pague en oficinas de Tránsito Municipal",
-              "style": { "align": "center" }
-            }
-          },
-          {
-            "type": "text",
-            "text": ""
+            "text": "Vencimiento: {{fechaVencimiento}}"
           },
           {
             "type": "text",
@@ -154,18 +126,29 @@ public static class MultaDsl
           },
           {
             "type": "text",
-            "text": "Firma del agente:"
+            "text": "Pague en: https://multas.ejemplo.gob.ar",
+            "style": { "align": "center" }
           },
           {
             "type": "image",
-            "source": "{{firmaAgente}}",
-            "width": 24,
-            "height": 12
+            "source": "https://multas.ejemplo.gob.ar/pago/{{nroActa}}",
+            "imageType": "qrcode"
           },
           {
             "type": "text",
-            "text": "Ag. {{agente.nombre}} - Leg. {{agente.legajo}}",
-            "style": { "align": "center" }
+            "text": "================================"
+          },
+          {
+            "type": "text",
+            "text": "Firma del Inspector:"
+          },
+          {
+            "type": "text",
+            "text": "{{inspector.nombre}} - Legajo: {{inspector.legajo}}"
+          },
+          {
+            "type": "text",
+            "text": "________________________________"
           }
         ]
       }
@@ -174,57 +157,51 @@ public static class MultaDsl
 
     public static Dictionary<string, object> GetSampleData() => new()
     {
-        ["municipio"]   = "San Miguel de Tucumán",
-        ["actaNumero"]  = "SMT-2026-004571",
-        ["fecha"]       = "30/03/2026 14:35",
+        ["nroActa"] = "2026-00123",
+        ["fecha"]   = "31/03/2026",
+        ["hora"]    = "14:35",
 
         ["infractor"] = new Dictionary<string, object>
         {
-            ["nombre"]    = "Juan Carlos Pérez",
+            ["apellido"]  = "García",
+            ["nombre"]    = "Carlos Alberto",
             ["dni"]       = "28.456.789",
-            ["domicilio"] = "Av. Mate de Luna 2100"
+            ["domicilio"] = "Av. Libertad 1234, Piso 3"
         },
 
         ["vehiculo"] = new Dictionary<string, object>
         {
             ["patente"] = "AB 123 CD",
-            ["marca"]   = "Volkswagen",
-            ["modelo"]  = "Gol Trend 2019"
+            ["marca"]   = "Toyota",
+            ["modelo"]  = "Corolla",
+            ["anio"]    = "2019"
         },
 
         ["infracciones"] = new List<Dictionary<string, object>>
         {
             new()
             {
-                ["articulo"]    = "42.1",
-                ["descripcion"] = "Exceso velocidad",
-                ["puntos"]      = "4",
-                ["monto"]       = "15000.00"
+                ["articulo"]    = "Art. 77 inc. 2",
+                ["descripcion"] = "Exceso de velocidad en zona urbana - límite 40 km/h circulando a 68 km/h según radar fijo",
+                ["puntos"]      = "3",
+                ["monto"]       = "15000"
             },
             new()
             {
-                ["articulo"]    = "38.3",
-                ["descripcion"] = "Giro prohibido",
+                ["articulo"]    = "Art. 48",
+                ["descripcion"] = "Uso de teléfono celular durante la conducción del vehículo en movimiento",
                 ["puntos"]      = "2",
-                ["monto"]       = "8500.00"
+                ["monto"]       = "8000"
             }
         },
 
-        ["totalMonto"]  = "23500.00",
-        ["totalPuntos"] = "6",
+        ["totalMonto"]       = "23000",
+        ["fechaVencimiento"] = "30/04/2026",
 
-        ["permitePagoOnline"] = true,
-        ["qrPagoUrl"]         = "https://multas.tucuman.gob.ar/pago/SMT-2026-004571",
-
-        ["agente"] = new Dictionary<string, object>
+        ["inspector"] = new Dictionary<string, object>
         {
-            ["nombre"] = "María López",
-            ["legajo"] = "T-1247"
-        },
-
-        ["firmaAgente"] = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAA" +
-                          "AYCAYAAACk/IOkAAAAMklEQVR4nO3OMQEAAAgDoGl" +
-                          "j/0tWwR5cQDZ5sCmpqampqampqampqampqampqampq" +
-                          "an5twBf8AAFiHcj8AAAAASUVORK5CYII="
+            ["nombre"] = "Juan Pérez",
+            ["legajo"] = "4521"
+        }
     };
 }

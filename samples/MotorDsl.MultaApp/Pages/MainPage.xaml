@@ -1,81 +1,89 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:controls="clr-namespace:MotorDsl.MultaApp.Controls"
              x:Class="MotorDsl.MultaApp.Pages.MainPage"
-             Title="Acta de Infracción">
+             Title="Multas - Motor DSL">
 
-    <Grid RowDefinitions="Auto,*">
+    <ScrollView>
+        <VerticalStackLayout Padding="12" Spacing="10">
 
-        <!-- Tab bar -->
-        <HorizontalStackLayout Grid.Row="0" Spacing="0" BackgroundColor="#1565C0">
-            <Button x:Name="TabPreview" Text="Preview" Clicked="OnTabClicked"
-                    BackgroundColor="#1565C0" TextColor="White" CornerRadius="0"
-                    WidthRequest="95" HeightRequest="44" FontSize="13" />
-            <Button x:Name="TabEscPos" Text="ESC/POS" Clicked="OnTabClicked"
-                    BackgroundColor="#1976D2" TextColor="White" CornerRadius="0"
-                    WidthRequest="95" HeightRequest="44" FontSize="13" />
-            <Button x:Name="TabPdf" Text="PDF" Clicked="OnTabClicked"
-                    BackgroundColor="#1976D2" TextColor="White" CornerRadius="0"
-                    WidthRequest="95" HeightRequest="44" FontSize="13" />
-            <Button x:Name="TabExport" Text="Exportar" Clicked="OnTabClicked"
-                    BackgroundColor="#1976D2" TextColor="White" CornerRadius="0"
-                    WidthRequest="95" HeightRequest="44" FontSize="13" />
-        </HorizontalStackLayout>
+            <!-- ═══ Estado Bluetooth ═══ -->
+            <Frame BackgroundColor="#E3F2FD" BorderColor="#1565C0" Padding="10" CornerRadius="8">
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
+                    <Label x:Name="BtStatusLabel" Text="Bluetooth: buscando..."
+                           FontSize="14" VerticalOptions="Center" />
+                    <Button x:Name="BtnReconectar" Grid.Column="1" Text="Reconectar"
+                            Clicked="OnReconectarClicked" BackgroundColor="#1565C0"
+                            TextColor="White" CornerRadius="6" HeightRequest="36"
+                            FontSize="12" IsVisible="False" />
+                </Grid>
+            </Frame>
 
-        <!-- Tab 1: Preview MAUI -->
-        <ScrollView x:Name="PanelPreview" Grid.Row="1" IsVisible="True">
-            <VerticalStackLayout Padding="10" Spacing="10">
-                <Button Text="Generar Preview" Clicked="OnGeneratePreviewClicked"
-                        BackgroundColor="#4CAF50" TextColor="White" CornerRadius="8" HeightRequest="44" />
-                <Border Stroke="DarkGray" StrokeShape="RoundRectangle 5"
-                        Padding="10" BackgroundColor="White" MinimumHeightRequest="200">
-                    <ScrollView>
-                        <controls:MauiDocumentPreview x:Name="MauiPreview" />
-                    </ScrollView>
-                </Border>
-            </VerticalStackLayout>
-        </ScrollView>
+            <!-- ═══ Lista de dispositivos (visible solo si hay varios) ═══ -->
+            <CollectionView x:Name="DeviceList" IsVisible="False"
+                            SelectionMode="Single" SelectionChanged="OnDeviceSelected"
+                            HeightRequest="120">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame Padding="8" Margin="2" BackgroundColor="#F5F5F5"
+                               BorderColor="#BDBDBD" CornerRadius="6">
+                            <Label Text="{Binding .}" FontSize="13" />
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
 
-        <!-- Tab 2: ESC/POS Hex dump -->
-        <ScrollView x:Name="PanelEscPos" Grid.Row="1" IsVisible="False">
-            <VerticalStackLayout Padding="10" Spacing="10">
-                <Button Text="Generar ESC/POS" Clicked="OnGenerateEscPosClicked"
-                        BackgroundColor="#2196F3" TextColor="White" CornerRadius="8" HeightRequest="44" />
-                <Label x:Name="EscPosOutput" Text="Esperando..." FontSize="11"
-                       FontFamily="Consolas" LineBreakMode="WordWrap" />
-            </VerticalStackLayout>
-        </ScrollView>
+            <!-- ═══ Selector de documento ═══ -->
+            <Label Text="Documento:" FontAttributes="Bold" FontSize="14" />
+            <Border Stroke="#CCCCCC" StrokeShape="RoundRectangle 8" BackgroundColor="White"
+                    Padding="4" HeightRequest="48">
+                <Grid ColumnDefinitions="*,Auto">
+                    <Picker x:Name="DocPicker" Title="Seleccione un documento para imprimir"
+                            SelectedIndexChanged="OnDocPickerChanged"
+                            TextColor="Black" TitleColor="#999999" FontSize="14"
+                            HorizontalOptions="Fill" VerticalOptions="Center">
+                        <Picker.Items>
+                            <x:String>Acta de Infracción</x:String>
+                            <x:String>Ticket Simple de Multa</x:String>
+                            <x:String>Comprobante de Pago</x:String>
+                        </Picker.Items>
+                    </Picker>
+                    <Label Grid.Column="1" Text="▼" FontSize="16" TextColor="#666666"
+                           VerticalOptions="Center" Margin="0,0,8,0" />
+                </Grid>
+            </Border>
 
-        <!-- Tab 3: PDF Preview -->
-        <ScrollView x:Name="PanelPdf" Grid.Row="1" IsVisible="False">
-            <VerticalStackLayout Padding="10" Spacing="10">
-                <Button Text="Generar PDF" Clicked="OnGeneratePdfClicked"
-                        BackgroundColor="#FF9800" TextColor="White" CornerRadius="8" HeightRequest="44" />
-                <WebView x:Name="PdfWebView" HeightRequest="600" />
-                <Label x:Name="PdfStatus" Text="" FontSize="12" TextColor="Gray" />
-            </VerticalStackLayout>
-        </ScrollView>
+            <!-- ═══ Preview del documento ═══ -->
+            <Frame BackgroundColor="White" BorderColor="#BDBDBD" Padding="10"
+                   CornerRadius="6" MinimumHeightRequest="200">
+                <ScrollView HeightRequest="300">
+                    <Label x:Name="PreviewLabel" Text="Seleccioná un documento..."
+                           FontFamily="monospace" FontSize="11"
+                           LineBreakMode="WordWrap" />
+                </ScrollView>
+            </Frame>
 
-        <!-- Tab 4: Exportar -->
-        <ScrollView x:Name="PanelExport" Grid.Row="1" IsVisible="False">
-            <VerticalStackLayout Padding="10" Spacing="15">
-                <Label Text="Exportar a API REST" FontSize="18" FontAttributes="Bold" />
-                <Label Text="URL del endpoint:" FontSize="14" />
-                <Entry x:Name="ApiUrlEntry" Placeholder="https://api.ejemplo.com/api/multas"
-                       Text="https://api.ejemplo.com/api/multas/SMT-2026-004571/ticket"
-                       FontSize="13" />
-                <Button Text="Enviar a API" Clicked="OnExportClicked"
-                        BackgroundColor="#9C27B0" TextColor="White" CornerRadius="8" HeightRequest="44" />
-                <Label x:Name="ExportStatus" Text="" FontSize="12" LineBreakMode="WordWrap" />
-            </VerticalStackLayout>
-        </ScrollView>
+            <!-- ═══ Botones de acción ═══ -->
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                <Button x:Name="BtnPreview" Text="Vista Previa" Grid.Column="0"
+                        Clicked="OnVistaPreviewClicked" BackgroundColor="#4CAF50"
+                        TextColor="White" CornerRadius="8" HeightRequest="44" FontSize="13" />
+                <Button x:Name="BtnImprimir" Text="Imprimir" Grid.Column="1"
+                        Clicked="OnImprimirClicked" BackgroundColor="#2196F3"
+                        TextColor="White" CornerRadius="8" HeightRequest="44" FontSize="13" />
+                <Button x:Name="BtnPdf" Text="Ver PDF" Grid.Column="2"
+                        Clicked="OnVerPdfClicked" BackgroundColor="#FF9800"
+                        TextColor="White" CornerRadius="8" HeightRequest="44" FontSize="13" />
+            </Grid>
 
-        <!-- Status bar -->
-        <Label x:Name="StatusLabel" Grid.Row="1" Text="" FontSize="11" TextColor="Gray"
-               VerticalOptions="End" HorizontalOptions="Fill" Padding="10,5"
-               BackgroundColor="#F5F5F5" />
+            <!-- ═══ WebView para PDF ═══ -->
+            <WebView x:Name="PdfWebView" HeightRequest="500" IsVisible="False" />
 
-    </Grid>
+            <!-- ═══ Mensaje de estado ═══ -->
+            <Label x:Name="MessageLabel" Text="" FontSize="12" TextColor="Gray"
+                   HorizontalTextAlignment="Center" />
+
+        </VerticalStackLayout>
+    </ScrollView>
 
 </ContentPage>

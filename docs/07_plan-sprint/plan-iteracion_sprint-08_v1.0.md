@@ -313,7 +313,7 @@ TK-62 (docs — ya hecho) ───┘        │
 * Servidor backend para recepción de multas
 * Caching de templates compilados
 * Logging estructurado del pipeline
-* Soporte iOS (este sprint solo Android)
+* **Soporte iOS para apps de ejemplo con impresión Bluetooth.** iOS no soporta Bluetooth clásico (SPP) requerido por impresoras térmicas ESC/POS. La librería core es compatible con iOS pero las apps de ejemplo son Android-only. Un desarrollador que necesite iOS debería considerar impresoras con soporte WiFi, AirPrint o hardware certificado MFi.
 
 ---
 

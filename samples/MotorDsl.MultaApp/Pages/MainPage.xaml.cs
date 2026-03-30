@@ -1,98 +1,294 @@
 using MotorDsl.Core.Contracts;
 using MotorDsl.Core.Models;
+using MotorDsl.MultaApp.Services;
 using MotorDsl.MultaApp.Templates;
-using System.Net.Http.Json;
+
+#if ANDROID
+using Android;
+using AndroidX.Core.App;
+using AndroidX.Core.Content;
+using Microsoft.Maui.ApplicationModel;
+#endif
 
 namespace MotorDsl.MultaApp.Pages;
 
 public partial class MainPage : ContentPage
 {
     private readonly IDocumentEngine _engine;
-    private readonly Button[] _tabs;
-    private readonly ScrollView[] _panels;
+    private readonly IThermalPrinterService _printer;
+    private List<BluetoothDevice> _devices = new();
 
-    public MainPage(IDocumentEngine engine)
+    // Documentos disponibles: template DSL + datos + nombre
+    private readonly (string Name, string Template, Func<Dictionary<string, object>> Data)[] _documents;
+
+    public MainPage(IDocumentEngine engine, IThermalPrinterService printer)
     {
         InitializeComponent();
         _engine = engine;
-        _tabs = new[] { TabPreview, TabEscPos, TabPdf, TabExport };
-        _panels = new[] { PanelPreview, PanelEscPos, PanelPdf, PanelExport };
+        _printer = printer;
+
+        _documents = new[]
+        {
+            ("Acta de Infracción", MultaDsl.Template, (Func<Dictionary<string, object>>)MultaDsl.GetSampleData),
+            ("Ticket Simple de Multa", TicketSimpleDsl.Template, (Func<Dictionary<string, object>>)TicketSimpleDsl.GetSampleData),
+            ("Comprobante de Pago", ComprobanteDsl.Template, (Func<Dictionary<string, object>>)ComprobanteDsl.GetSampleData),
+        };
     }
 
-    // ─── Tab switching ───
-
-    private void OnTabClicked(object? sender, EventArgs e)
+    protected override async void OnAppearing()
     {
-        if (sender is not Button clicked) return;
-        int idx = Array.IndexOf(_tabs, clicked);
-        for (int i = 0; i < _tabs.Length; i++)
-        {
-            _tabs[i].BackgroundColor = i == idx ? Color.FromArgb("#1565C0") : Color.FromArgb("#1976D2");
-            _panels[i].IsVisible = i == idx;
-        }
+        base.OnAppearing();
+
+#if ANDROID
+        var granted = await RequestBluetoothPermissions();
+        if (granted)
+            await AutoConnectBluetoothAsync();
+#else
+        await AutoConnectBluetoothAsync();
+#endif
     }
 
-    // ─── Tab 1: Preview MAUI ───
+    // ─── Bluetooth Permissions (Android 12+) ───
 
-    private void OnGeneratePreviewClicked(object? sender, EventArgs e)
-    {
-        try
-        {
-            ShowStatus("Generando preview...");
-            var profile = new DeviceProfile("thermal_58mm", 32, "text");
-            var layouted = _engine.RenderLayout(MultaDsl.Template, MultaDsl.GetSampleData(), profile);
-
-            MauiPreview.Document = layouted;
-            ShowStatus("Preview generado.");
-        }
-        catch (Exception ex)
-        {
-            ShowStatus($"Error: {ex.Message}");
-        }
-    }
-
-    // ─── Tab 2: ESC/POS Hex dump ───
-
-    private void OnGenerateEscPosClicked(object? sender, EventArgs e)
+#if ANDROID
+    private async Task<bool> RequestBluetoothPermissions()
     {
         try
         {
-            ShowStatus("Generando ESC/POS...");
-            var profile = new DeviceProfile("thermal_58mm", 32, "escpos-bitmap");
-            var result = _engine.Render(MultaDsl.Template, MultaDsl.GetSampleData(), profile);
-
-            if (result.IsSuccessful && result.Output is byte[] bytes)
+            if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.S)
             {
-                var hex = BitConverter.ToString(bytes).Replace("-", " ");
-                var lines = new List<string>();
-                for (int i = 0; i < hex.Length; i += 48)
-                    lines.Add(hex[i..Math.Min(i + 48, hex.Length)]);
+                var activity = Platform.CurrentActivity!;
+                string[] btPermissions = new[]
+                {
+                    Manifest.Permission.BluetoothScan,
+                    Manifest.Permission.BluetoothConnect
+                };
 
-                EscPosOutput.Text = $"ESC/POS ({bytes.Length} bytes):\n\n{string.Join("\n", lines)}";
-                ShowStatus($"ESC/POS generado: {bytes.Length} bytes");
+                bool allGranted = btPermissions.All(p =>
+                    ContextCompat.CheckSelfPermission(activity, p) == (int)Android.Content.PM.Permission.Granted);
+
+                if (!allGranted)
+                {
+                    ActivityCompat.RequestPermissions(activity, btPermissions, 1);
+                    await Task.Delay(3000);
+
+                    allGranted = btPermissions.All(p =>
+                        ContextCompat.CheckSelfPermission(activity, p) == (int)Android.Content.PM.Permission.Granted);
+                }
+
+                if (!allGranted)
+                {
+                    ShowMessage("Permisos BT denegados. Aceptá los permisos y presioná Reconectar.");
+                    BtStatusLabel.Text = "Bluetooth: permisos denegados";
+                    BtnReconectar.IsVisible = true;
+                    return false;
+                }
             }
             else
             {
-                EscPosOutput.Text = "ERRORES:\n" + string.Join("\n", result.Errors);
-                ShowStatus("Error al generar ESC/POS");
+                var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+                if (status != PermissionStatus.Granted)
+                    status = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+
+                if (status != PermissionStatus.Granted)
+                {
+                    ShowMessage("Permisos de ubicación denegados (necesarios para BT en Android < 12).");
+                    BtnReconectar.IsVisible = true;
+                    return false;
+                }
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MULTA] BT Permissions error: {ex.Message}");
+            ShowMessage($"Error permisos BT: {ex.Message}");
+            BtnReconectar.IsVisible = true;
+            return false;
+        }
+    }
+#endif
+
+    // ─── Bluetooth Auto-Connect ───
+
+    private async Task AutoConnectBluetoothAsync()
+    {
+        try
+        {
+            ShowMessage("Buscando impresoras emparejadas...");
+            _devices = await _printer.ScanDevicesAsync();
+
+            if (_devices.Count == 0)
+            {
+                BtStatusLabel.Text = "Bluetooth: sin dispositivos emparejados";
+                BtnReconectar.IsVisible = true;
+                ShowMessage("No se encontraron impresoras.");
+            }
+            else if (_devices.Count == 1)
+            {
+                BtStatusLabel.Text = $"Conectando a {_devices[0].Name}...";
+                var ok = await _printer.ConnectAsync(_devices[0].Address);
+                BtStatusLabel.Text = ok
+                    ? $"Conectado: {_devices[0].Name}"
+                    : "Error al conectar";
+                BtnReconectar.IsVisible = !ok;
+                ShowMessage(ok ? "Conectado automáticamente." : "Falló la conexión.");
+            }
+            else
+            {
+                BtStatusLabel.Text = $"Bluetooth: {_devices.Count} dispositivos encontrados";
+                DeviceList.ItemsSource = _devices.Select(d => d.ToString()).ToList();
+                DeviceList.IsVisible = true;
+                ShowMessage("Seleccioná una impresora.");
             }
         }
         catch (Exception ex)
         {
-            EscPosOutput.Text = $"Excepción: {ex.Message}";
-            ShowStatus("Error");
+            Console.WriteLine($"[MULTA] AutoConnect error: {ex.Message}");
+            BtStatusLabel.Text = "Bluetooth: error";
+            BtnReconectar.IsVisible = true;
+            ShowMessage($"BT Error: {ex.Message}");
         }
     }
 
-    // ─── Tab 3: PDF Preview ───
-
-    private void OnGeneratePdfClicked(object? sender, EventArgs e)
+    private async void OnDeviceSelected(object? sender, SelectionChangedEventArgs e)
     {
+        if (e.CurrentSelection.FirstOrDefault() is not string selected) return;
+
+        var device = _devices.FirstOrDefault(d => d.ToString() == selected);
+        if (device == null) return;
+
         try
         {
-            ShowStatus("Generando PDF...");
+            BtStatusLabel.Text = $"Conectando a {device.Name}...";
+            var ok = await _printer.ConnectAsync(device.Address);
+            BtStatusLabel.Text = ok ? $"Conectado: {device.Name}" : "Error al conectar";
+            DeviceList.IsVisible = false;
+            BtnReconectar.IsVisible = !ok;
+            ShowMessage(ok ? $"Conectado a {device.Name}." : "Falló la conexión.");
+        }
+        catch (Exception ex)
+        {
+            BtStatusLabel.Text = "Error al conectar";
+            ShowMessage(ex.Message);
+        }
+    }
+
+    private async void OnReconectarClicked(object? sender, EventArgs e)
+    {
+        BtnReconectar.IsVisible = false;
+#if ANDROID
+        var granted = await RequestBluetoothPermissions();
+        if (granted)
+            await AutoConnectBluetoothAsync();
+#else
+        await AutoConnectBluetoothAsync();
+#endif
+    }
+
+    // ─── Selector de documento ───
+
+    private void OnDocPickerChanged(object? sender, EventArgs e)
+    {
+        PreviewLabel.Text = "Presioná 'Vista Previa' para ver el documento.";
+        PdfWebView.IsVisible = false;
+    }
+
+    private (string Template, Dictionary<string, object> Data)? GetSelectedDocument()
+    {
+        var idx = DocPicker.SelectedIndex;
+        if (idx < 0 || idx >= _documents.Length)
+        {
+            ShowMessage("Seleccioná un documento primero.");
+            return null;
+        }
+        return (_documents[idx].Template, _documents[idx].Data());
+    }
+
+    // ─── Vista Previa (texto) ───
+
+    private void OnVistaPreviewClicked(object? sender, EventArgs e)
+    {
+        Console.WriteLine("[MULTA] OnVistaPrevia iniciado");
+        var doc = GetSelectedDocument();
+        if (doc == null) return;
+
+        try
+        {
+            PdfWebView.IsVisible = false;
+            var profile = new DeviceProfile("thermal_58mm", 32, "text");
+            Console.WriteLine("[MULTA] Llamando engine.Render...");
+            var result = _engine.Render(doc.Value.Template, doc.Value.Data, profile);
+            Console.WriteLine($"[MULTA] Render OK. IsSuccessful={result.IsSuccessful}");
+
+            if (result.IsSuccessful)
+            {
+                PreviewLabel.Text = result.Output?.ToString() ?? "(vacío)";
+                ShowMessage("Vista previa generada.");
+            }
+            else
+            {
+                PreviewLabel.Text = "ERRORES:\n" + string.Join("\n", result.Errors);
+                ShowMessage("Error al generar preview.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MULTA] Error: {ex.Message}\n{ex.StackTrace}");
+            PreviewLabel.Text = $"Error: {ex.Message}";
+            ShowMessage("Excepción al generar preview.");
+        }
+    }
+
+    // ─── Imprimir ESC/POS ───
+
+    private async void OnImprimirClicked(object? sender, EventArgs e)
+    {
+        var doc = GetSelectedDocument();
+        if (doc == null) return;
+
+        if (!_printer.IsConnected)
+        {
+            ShowMessage("No hay impresora conectada. Usá 'Reconectar'.");
+            return;
+        }
+
+        try
+        {
+            ShowMessage("Generando ESC/POS...");
+            var profile = new DeviceProfile("thermal_58mm", 32, "escpos-bitmap");
+            var result = _engine.Render(doc.Value.Template, doc.Value.Data, profile);
+
+            if (result.IsSuccessful && result.Output is byte[] bytes)
+            {
+                ShowMessage($"Imprimiendo {bytes.Length} bytes...");
+                await _printer.SendBytesAsync(bytes);
+                ShowMessage($"Impreso OK — {bytes.Length} bytes enviados.");
+            }
+            else
+            {
+                ShowMessage("Error: " + string.Join("; ", result.Errors));
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"Error al imprimir: {ex.Message}");
+        }
+    }
+
+    // ─── Ver PDF ───
+
+    private void OnVerPdfClicked(object? sender, EventArgs e)
+    {
+        var doc = GetSelectedDocument();
+        if (doc == null) return;
+
+        try
+        {
+            ShowMessage("Generando PDF...");
             var profile = new DeviceProfile("a4-pdf", 80, "pdf");
-            var result = _engine.Render(MultaDsl.Template, MultaDsl.GetSampleData(), profile);
+            var result = _engine.Render(doc.Value.Template, doc.Value.Data, profile);
 
             if (result.IsSuccessful && result.Output is byte[] pdfBytes)
             {
@@ -104,78 +300,27 @@ public partial class MainPage : ContentPage
                                width='100%' height='100%' type='application/pdf' />
                         <p style='text-align:center;font-family:sans-serif;'>
                             PDF generado ({pdfBytes.Length:N0} bytes).
-                            Si no se ve, el WebView de Android puede no soportar embed PDF.
                         </p>
                     </body></html>"
                 };
-                PdfStatus.Text = $"PDF generado: {pdfBytes.Length:N0} bytes";
-                ShowStatus($"PDF generado: {pdfBytes.Length:N0} bytes");
+                PdfWebView.IsVisible = true;
+                ShowMessage($"PDF generado: {pdfBytes.Length:N0} bytes.");
             }
             else
             {
-                PdfStatus.Text = "ERRORES:\n" + string.Join("\n", result.Errors);
-                ShowStatus("Error al generar PDF");
+                ShowMessage("Error: " + string.Join("; ", result.Errors));
             }
         }
         catch (Exception ex)
         {
-            PdfStatus.Text = $"Excepción: {ex.Message}";
-            ShowStatus("Error");
+            ShowMessage($"Error al generar PDF: {ex.Message}");
         }
     }
 
-    // ─── Tab 4: Exportar a API REST ───
+    // ─── Helper ───
 
-    private async void OnExportClicked(object? sender, EventArgs e)
+    private void ShowMessage(string msg)
     {
-        try
-        {
-            var url = ApiUrlEntry.Text?.Trim();
-            if (string.IsNullOrEmpty(url))
-            {
-                ExportStatus.Text = "Ingresá una URL válida.";
-                return;
-            }
-
-            ShowStatus("Exportando...");
-
-            // Render ESC/POS
-            var escposProfile = new DeviceProfile("thermal_58mm", 32, "escpos-bitmap");
-            var escposResult = _engine.Render(MultaDsl.Template, MultaDsl.GetSampleData(), escposProfile);
-
-            // Render PDF
-            var pdfProfile = new DeviceProfile("a4-pdf", 80, "pdf");
-            var pdfResult = _engine.Render(MultaDsl.Template, MultaDsl.GetSampleData(), pdfProfile);
-
-            var payload = new
-            {
-                actaNumero   = "SMT-2026-004571",
-                timestamp    = DateTime.UtcNow,
-                target       = escposResult.Target,
-                contentB64   = escposResult.ToBase64(),
-                pdfB64       = pdfResult.ToBase64(),
-                agenteLegajo = "T-1247"
-            };
-
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-            var response = await http.PostAsJsonAsync(url, payload);
-
-            ExportStatus.Text = response.IsSuccessStatusCode
-                ? $"Exportado OK — {response.StatusCode}"
-                : $"Error — {response.StatusCode}: {await response.Content.ReadAsStringAsync()}";
-            ShowStatus(ExportStatus.Text);
-        }
-        catch (Exception ex)
-        {
-            ExportStatus.Text = $"Excepción: {ex.Message}";
-            ShowStatus("Error al exportar");
-        }
-    }
-
-    // ─── Helpers ───
-
-    private void ShowStatus(string msg)
-    {
-        StatusLabel.Text = $"{DateTime.Now:HH:mm:ss} — {msg}";
+        MessageLabel.Text = $"{DateTime.Now:HH:mm:ss} — {msg}";
     }
 }

@@ -96,6 +96,7 @@ Quedan explícitamente fuera de esta versión:
 * Soporte de impresión en red avanzada.
 * Motor de reglas complejas o scripting avanzado.
 * Analítica o monitoreo de impresión.
+* **Soporte iOS para apps de ejemplo con impresión Bluetooth.** iOS no permite acceso a Bluetooth clásico (perfil SPP) desde aplicaciones de terceros, que es el protocolo requerido por la mayoría de impresoras térmicas ESC/POS. La librería core (`MotorDsl.Core`, `MotorDsl.Rendering`) es compatible con iOS, pero las apps de ejemplo que usan `ThermalPrinterService` vía Bluetooth son Android-only. Ver [compatibilidad-plataformas_v1.0.md](compatibilidad-plataformas_v1.0.md) para alternativas.
 
 Estos elementos podrán evaluarse mediante solicitudes de cambio futuras.
 
@@ -117,6 +118,7 @@ Estos supuestos son necesarios para el cumplimiento del alcance.
 
 * La librería deberá ser compatible con .NET MAUI.
 * El sistema deberá funcionar en entornos móviles (principalmente Android).
+* **El target principal para impresión Bluetooth es Android.** iOS queda fuera del alcance de las apps de ejemplo debido a que Apple no permite acceso a Bluetooth clásico (perfil SPP) desde aplicaciones de terceros. Las impresoras térmicas ESC/POS estándar utilizan SPP para la comunicación, lo que hace inviable la impresión directa por Bluetooth en iOS sin hardware certificado MFi. La librería core es multiplataforma y puede usarse en iOS para generación de documentos (PDF, texto), pero la conexión BT a térmicas requiere Android.
 * Se utilizará JSON como formato de intercambio para datos y plantillas.
 * El diseño deberá ser desacoplado del hardware.
 * El rendimiento deberá ser adecuado para dispositivos móviles.

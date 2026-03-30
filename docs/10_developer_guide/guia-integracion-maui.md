@@ -386,3 +386,36 @@ if (status != PermissionStatus.Granted)
 ```
 
 En Android < 12, solicitar `Permissions.LocationWhenInUse` en su lugar.
+
+---
+
+## 7. Compatibilidad de plataformas
+
+La librería core es multiplataforma (.NET Standard), pero la conectividad Bluetooth para impresoras térmicas solo está disponible en Android.
+
+| Componente | Android | iOS | Windows |
+|---|---|---|---|
+| MotorDsl.Core (parser, evaluator, layout) | ✅ | ✅ | ✅ |
+| MotorDsl.Rendering (text, ESC/POS) | ✅ | ✅ | ✅ |
+| ThermalPrinterService (Bluetooth SPP) | ✅ | ❌ | ❌ |
+| SkiaSharp (rasterización de imágenes) | ✅ | ✅ | ✅ |
+| QuestPDF (generación PDF) | ✅ | ✅ | ✅ |
+
+### ¿Por qué iOS no soporta Bluetooth para térmicas?
+
+Apple restringe el acceso a **Bluetooth clásico** (perfil SPP — Serial Port Profile) desde aplicaciones de terceros. Las impresoras térmicas ESC/POS estándar utilizan SPP para la comunicación serie. iOS solo expone **Bluetooth Low Energy (BLE)** a través de CoreBluetooth, y la mayoría de impresoras térmicas económicas no soportan BLE.
+
+Esto no es una limitación de .NET MAUI ni de la librería — es una restricción del sistema operativo iOS.
+
+### Alternativas para iOS
+
+Si necesitás imprimir desde iOS, estas son las opciones disponibles:
+
+| Alternativa | Descripción |
+|---|---|
+| **Impresoras WiFi** | Algunas impresoras térmicas soportan conexión WiFi. El motor genera los mismos bytes ESC/POS, solo cambia el transporte (TCP socket en vez de Bluetooth). |
+| **AirPrint** | Usar el renderer PDF (`PdfRenderer`) y enviar el PDF a una impresora compatible con AirPrint. No usa ESC/POS. |
+| **Hardware MFi** | Impresoras certificadas por Apple bajo el programa MFi (Made for iPhone) permiten comunicación Bluetooth clásica, pero son significativamente más caras. |
+| **BLE (impresoras compatibles)** | Algunas impresoras modernas soportan BLE además de SPP. Requiere implementar un `IThermalPrinterService` que use CoreBluetooth. |
+
+> **Nota:** La librería core funciona perfectamente en iOS para generar documentos en formato texto o PDF. Solo la capa de transporte Bluetooth es Android-only.
