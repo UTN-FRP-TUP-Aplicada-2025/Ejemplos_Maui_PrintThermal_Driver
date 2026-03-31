@@ -6,9 +6,39 @@ using MotorDsl.Core.Contracts;
 using MotorDsl.Core.Models;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Drawing;
+using PdfSharpCore.Fonts;
 
 namespace MotorDsl.MultaApp.Renderers
 {
+    public class MotorDslFontResolver : IFontResolver
+    {
+        public static readonly MotorDslFontResolver Instance = new();
+
+        public string DefaultFontName => "DroidSans";
+
+        public byte[] GetFont(string faceName)
+        {
+            var assembly = typeof(MotorDslFontResolver).Assembly;
+            var resourceName = assembly.GetManifestResourceNames()
+                .FirstOrDefault(n => n.EndsWith("DroidSans-Regular.ttf"));
+
+            if (resourceName == null)
+                throw new InvalidOperationException(
+                    "No se encontró DroidSans-Regular.ttf como EmbeddedResource. " +
+                    $"Recursos disponibles: {string.Join(", ", assembly.GetManifestResourceNames())}");
+
+            using var stream = assembly.GetManifestResourceStream(resourceName)!;
+            using var ms = new MemoryStream();
+            stream.CopyTo(ms);
+            return ms.ToArray();
+        }
+
+        public FontResolverInfo ResolveTypeface(string familyName, bool isBold, bool isItalic)
+        {
+            return new FontResolverInfo("DroidSans");
+        }
+    }
+
     public class PdfRenderer : IRenderer
     {
         public string Target => "pdf";
@@ -18,22 +48,43 @@ namespace MotorDsl.MultaApp.Renderers
             var result = new RenderResult("pdf");
             try
             {
-#if ANDROID
-                if (PdfSharpCore.Fonts.GlobalFontSettings.FontResolver == null || !(PdfSharpCore.Fonts.GlobalFontSettings.FontResolver is CustomFontResolver))
-                {
-                    PdfSharpCore.Fonts.GlobalFontSettings.FontResolver = new CustomFontResolver();
-                }
-#endif
+                GlobalFontSettings.FontResolver = MotorDslFontResolver.Instance;
+
                 using var doc = new PdfDocument();
                 var page = doc.AddPage();
                 page.Size = PdfSharpCore.PageSize.A4;
                 using var gfx = XGraphics.FromPdfPage(page);
-                var font = new XFont("Arial", 12);
+                var font = new XFont("DroidSans", 12);
 
                 var layoutInfos = document.NodeLayoutInfo.Values.OrderBy(n => n.LineNumber);
                 double y = 40;
                 foreach (var node in layoutInfos)
                 {
+                    // Render bitmap image from base64
+                    if (node.DeviceMetadata.TryGetValue("is_bitmap", out var bmpFlag) && bmpFlag is true
+                        && node.DeviceMetadata.TryGetValue("bitmap_source", out var bmpSrc)
+                        && bmpSrc is string bmpStr && !string.IsNullOrEmpty(bmpStr))
+                    {
+                        try
+                        {
+                            var base64 = bmpStr.Contains(',') ? bmpStr.Split(',')[1] : bmpStr;
+                            var imageBytes = Convert.FromBase64String(base64);
+                            var xImage = XImage.FromStream(() => new MemoryStream(imageBytes));
+                            double imgWidth = Math.Min(node.DeviceMetadata.TryGetValue("bitmap_width", out var bw)
+                                ? Convert.ToDouble(bw) : 150, 400);
+                            double imgHeight = imgWidth * xImage.PixelHeight / Math.Max(xImage.PixelWidth, 1);
+                            double x = node.Alignment?.ToLower() == "center" ? (page.Width.Point - imgWidth) / 2 : 40;
+                            gfx.DrawImage(xImage, x, y, imgWidth, imgHeight);
+                            y += imgHeight + 4;
+                        }
+                        catch
+                        {
+                            gfx.DrawString("[Imagen]", font, XBrushes.Black, new XPoint(40, y));
+                            y += font.Height + 4;
+                        }
+                        continue;
+                    }
+
                     if (!string.IsNullOrEmpty(node.WrappedText))
                     {
                         gfx.DrawString(node.WrappedText, font, XBrushes.Black, new XPoint(40, y));
@@ -51,23 +102,6 @@ namespace MotorDsl.MultaApp.Renderers
             }
             return result;
         }
-
-#if ANDROID
-        public class CustomFontResolver : PdfSharpCore.Fonts.IFontResolver
-        {
-            public string DefaultFontName => "Arial";
-
-            public byte[] GetFont(string faceName)
-            {
-                // Retornar una fuente embebida o null para usar default
-                return null;
-            }
-
-            public PdfSharpCore.Fonts.FontResolverInfo ResolveTypeface(string familyName, bool isBold, bool isItalic)
-            {
-                return new PdfSharpCore.Fonts.FontResolverInfo("Arial");
-            }
-        }
-#endif
     }
 }
+

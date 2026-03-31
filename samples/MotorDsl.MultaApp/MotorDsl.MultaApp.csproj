@@ -37,6 +37,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<EmbeddedResource Include="Resources\Fonts\DroidSans-Regular.ttf" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\..\src\MotorDsl.Core\MotorDsl.Core.csproj" />
 		<ProjectReference Include="..\..\src\MotorDsl.Parser\MotorDsl.Parser.csproj" />
 		<ProjectReference Include="..\..\src\MotorDsl.Rendering\MotorDsl.Rendering.csproj" />

@@ -52,6 +52,16 @@ public class EscPosRenderer : IRenderer
                         continue;
                     }
 
+                    // Bitmap image — no rasterizer available, emit text placeholder
+                    if (layoutInfo.DeviceMetadata.TryGetValue("is_bitmap", out var bmpFlag) && bmpFlag is true)
+                    {
+                        buffer.AddRange(EscPosCommands.AlignCenter);
+                        buffer.AddRange(EncodeText("[BITMAP]"));
+                        buffer.AddRange(EscPosCommands.LineFeed);
+                        buffer.AddRange(EscPosCommands.AlignLeft);
+                        continue;
+                    }
+
                     // Emit alignment command
                     buffer.AddRange(GetAlignmentCommand(layoutInfo.Alignment));
 
