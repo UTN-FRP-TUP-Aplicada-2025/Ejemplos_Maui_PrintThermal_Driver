@@ -1,24 +1,17 @@
 using MotorDsl.Core.Contracts;
 using MotorDsl.Core.Models;
 using MotorDsl.Core.Providers;
+using System.Text;
 
 namespace MotorDsl.Tests;
 
-/// <summary>
-/// Tests for IDeviceProfileProvider contract (v2.0) and InMemoryDeviceProfileProvider implementation.
-/// Sprint 05 — TK-29
-/// 
-/// Interface contract (read-only):
-///   DeviceProfile? GetProfile(string name)
-///   IEnumerable&lt;DeviceProfile&gt; GetAll()
-/// 
-/// InMemory adds: void Add(DeviceProfile profile)
-/// 
-/// Note: replaces the v1.0 IDeviceProfileProvider which only had GetProfile(string)
-/// returning non-nullable and throwing KeyNotFoundException.
-/// </summary>
 public class DeviceProfileProviderTests
 {
+    static DeviceProfileProviderTests()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+    }
+
     // ── GetProfile ───────────────────────────────────────────────
 
     [Fact]

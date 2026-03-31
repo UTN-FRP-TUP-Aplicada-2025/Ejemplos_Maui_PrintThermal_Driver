@@ -6,13 +6,13 @@ using System.Text;
 
 namespace MotorDsl.Tests;
 
-/// <summary>
-/// Tests para Barcode EAN-13 en ESC/POS y TextRenderer.
-/// Sprint 06 | TK-43, TK-44
-/// 3 test cases.
-/// </summary>
 public class BarcodeEscPosTests
 {
+    static BarcodeEscPosTests()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+    }
+
     private readonly ILayoutEngine _layoutEngine = new LayoutEngine();
 
     private DeviceProfile EscPosProfile() => new("thermal-80mm", 48, "escpos");

@@ -8,7 +8,7 @@ using MotorDsl.MultaApp.Renderers;
 using MotorDsl.MultaApp.Services;
 using MotorDsl.MultaApp.Templates;
 
-using QuestPDF.Infrastructure;
+// using QuestPDF.Infrastructure;
 
 namespace MotorDsl.MultaApp;
 
@@ -16,8 +16,7 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
-        // Inicializar licencia QuestPDF antes de cualquier uso
-        QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 
         var builder = MauiApp.CreateBuilder();
         builder
@@ -40,12 +39,11 @@ public static class MauiProgram
             {
                 p.Add(new DeviceProfile("thermal_58mm", 32, "escpos-bitmap"));
                 p.Add(new DeviceProfile("a4-pdf", 80, "pdf"));
+                p.Add(new DeviceProfile("pdf", 48, "pdf"));
             })
-            .AddRenderer<BitmapEscPosRenderer>()
             .AddRenderer<PdfRenderer>();
 
-        // IBitmapRasterizer — SkiaSharp implementation
-        builder.Services.AddSingleton<IBitmapRasterizer, SkiaSharpRasterizer>();
+    // PDF and SkiaSharp renderers removed
 
         // Servicios de la app
         builder.Services.AddSingleton<IPrintErrorHandler, DefaultPrintErrorHandler>();

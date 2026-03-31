@@ -8,6 +8,7 @@ using Android;
 using AndroidX.Core.App;
 using AndroidX.Core.Content;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Storage;
 #endif
 
 namespace MotorDsl.MultaApp.Pages;
@@ -192,7 +193,7 @@ public partial class MainPage : ContentPage
     private void OnDocPickerChanged(object? sender, EventArgs e)
     {
         PreviewLabel.Text = "Presioná 'Vista Previa' para ver el documento.";
-        PdfWebView.IsVisible = false;
+        // PdfWebView eliminado
     }
 
     private (string Template, Dictionary<string, object> Data)? GetSelectedDocument()
@@ -216,7 +217,7 @@ public partial class MainPage : ContentPage
 
         try
         {
-            PdfWebView.IsVisible = false;
+            // PdfWebView eliminado
             var profile = new DeviceProfile("thermal_58mm", 32, "text");
             Console.WriteLine("[MULTA] Llamando engine.Render...");
             var result = _engine.Render(doc.Value.Template, doc.Value.Data, profile);
@@ -245,6 +246,7 @@ public partial class MainPage : ContentPage
 
     private async void OnImprimirClicked(object? sender, EventArgs e)
     {
+        MessageLabel.Text = "Iniciando impresión...";
         var doc = GetSelectedDocument();
         if (doc == null) return;
 
@@ -257,12 +259,18 @@ public partial class MainPage : ContentPage
         try
         {
             ShowMessage("Generando ESC/POS...");
-            var profile = new DeviceProfile("thermal_58mm", 32, "escpos-bitmap");
+            var profile = new DeviceProfile("thermal_58mm", 32, "escpos");
             var result = _engine.Render(doc.Value.Template, doc.Value.Data, profile);
 
             if (result.IsSuccessful && result.Output is byte[] bytes)
             {
-                ShowMessage($"Imprimiendo {bytes.Length} bytes...");
+                ShowMessage($"Bytes a enviar: {bytes.Length}");
+                await Task.Delay(2000);
+                if (_printer == null)
+                {
+                    MessageLabel.Text = "Error: _printerService es null";
+                    return;
+                }
                 await _printer.SendBytesAsync(bytes);
                 ShowMessage($"Impreso OK — {bytes.Length} bytes enviados.");
             }
@@ -273,49 +281,53 @@ public partial class MainPage : ContentPage
         }
         catch (Exception ex)
         {
-            ShowMessage($"Error al imprimir: {ex.Message}");
+            var inner = ex.InnerException;
+            var msg = $"TIPO: {ex.GetType().Name}\n" +
+                      $"MSG: {ex.Message}\n" +
+                      $"INNER: {inner?.GetType().Name}: {inner?.Message}\n" +
+                      $"INNER2: {inner?.InnerException?.Message}\n" +
+                      $"STACK: {ex.StackTrace?.Replace("\n", " | ")?.Substring(0, Math.Min(200, ex.StackTrace?.Length ?? 0))}";
+            MessageLabel.Text = $"{DateTime.Now:HH:mm:ss} — {msg}";
+            System.Console.WriteLine($"[MULTA-ERROR] {msg}");
         }
     }
 
     // ─── Ver PDF ───
 
-    private void OnVerPdfClicked(object? sender, EventArgs e)
+#if ANDROID
+    private async void OnVerPdfClicked(object? sender, EventArgs e)
     {
-        var doc = GetSelectedDocument();
-        if (doc == null) return;
-
         try
         {
-            ShowMessage("Generando PDF...");
-            var profile = new DeviceProfile("a4-pdf", 80, "pdf");
+            var doc = GetSelectedDocument();
+            if (doc == null)
+            {
+                ShowMessage("Seleccioná un documento primero.");
+                return;
+            }
+            var profile = new DeviceProfile("pdf", 48, "pdf");
             var result = _engine.Render(doc.Value.Template, doc.Value.Data, profile);
-
             if (result.IsSuccessful && result.Output is byte[] pdfBytes)
             {
-                var base64 = Convert.ToBase64String(pdfBytes);
-                PdfWebView.Source = new HtmlWebViewSource
+                var path = Path.Combine(FileSystem.CacheDirectory, "multa.pdf");
+                File.WriteAllBytes(path, pdfBytes);
+                await Launcher.OpenAsync(new OpenFileRequest
                 {
-                    Html = $@"<html><body style='margin:0;padding:0;'>
-                        <embed src='data:application/pdf;base64,{base64}'
-                               width='100%' height='100%' type='application/pdf' />
-                        <p style='text-align:center;font-family:sans-serif;'>
-                            PDF generado ({pdfBytes.Length:N0} bytes).
-                        </p>
-                    </body></html>"
-                };
-                PdfWebView.IsVisible = true;
-                ShowMessage($"PDF generado: {pdfBytes.Length:N0} bytes.");
+                    File = new ReadOnlyFile(path)
+                });
+                ShowMessage($"PDF generado y abierto: {path}");
             }
             else
             {
-                ShowMessage("Error: " + string.Join("; ", result.Errors));
+                ShowMessage("Error PDF: " + string.Join("; ", result.Errors));
             }
         }
         catch (Exception ex)
         {
-            ShowMessage($"Error al generar PDF: {ex.Message}");
+            ShowMessage($"Error PDF: {ex.Message}");
         }
     }
+#endif
 
     // ─── Helper ───
 

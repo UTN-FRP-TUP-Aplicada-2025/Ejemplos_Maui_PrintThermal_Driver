@@ -22,6 +22,8 @@ public class EscPosRenderer : IRenderer
 
             // Initialize printer
             buffer.AddRange(EscPosCommands.Init);
+            // Seleccionar codepage PC437
+            buffer.AddRange(new byte[] { 0x1B, 0x74, 0x00 });
 
             if (document?.Root != null)
             {
@@ -58,9 +60,8 @@ public class EscPosRenderer : IRenderer
                     if (isBold)
                         buffer.AddRange(EscPosCommands.StyleBold);
 
-                    // Emit text bytes
-                    var encoding = GetEncoding(profile);
-                    buffer.AddRange(encoding.GetBytes(layoutInfo.WrappedText));
+                    // Emit text bytes with CP437 encoding
+                    buffer.AddRange(EncodeText(layoutInfo.WrappedText ?? ""));
 
                     // Bold off after bold line
                     if (isBold)
@@ -84,6 +85,14 @@ public class EscPosRenderer : IRenderer
             result.Output = Array.Empty<byte>();
             return result;
         }
+    }
+
+    private static byte[] EncodeText(string text)
+    {
+        // CP437 es el codepage IBM original que soporta caracteres españoles en posiciones correctas
+        var encoding = System.Text.CodePagesEncodingProvider.Instance.GetEncoding(437)
+                       ?? System.Text.Encoding.ASCII;
+        return encoding.GetBytes(text);
     }
 
     private static byte[] GetAlignmentCommand(string? alignment) => alignment?.ToLower() switch

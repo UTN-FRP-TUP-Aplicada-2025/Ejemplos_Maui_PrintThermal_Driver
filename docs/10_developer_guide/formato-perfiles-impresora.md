@@ -79,6 +79,64 @@ Los tres parámetros son obligatorios. `Capabilities` se inicializa como diccion
 
 ## 3. Perfiles predefinidos
 
+### Perfil real: 58HB6-6101 (basado en self-test)
+
+| Propiedad              | Valor                                                        |
+|------------------------|--------------------------------------------------------------|
+| Modelo                 | 58HB6-6101                                                  |
+| Ancho papel            | 58mm                                                         |
+| Chars por línea        | 32                                                           |
+| Codepage               | PC437 (IBM USA Std. Europe)                                  |
+| ESC t command          | 0x1B 0x74 0x00                                               |
+| CMD Type               | ESC/POS                                                      |
+| Baudrate BT            | 115200                                                       |
+| BT PIN                 | 0000                                                         |
+| Barcodes soportados    | UPC-A, UPC-E, EAN13, EAN8, CODE39, CODEBAR, ITF, CODE93, CODE128, QR |
+| Temperatura impresión  | 35°C                                                         |
+| Print depth            | 38 level                                                     |
+| Quality level          | 4 level                                                      |
+| BT Multi-connection    | No soportado                                                 |
+
+#### Ejemplo de código C# para crear el perfil 58HB6
+
+```csharp
+var profile58HB6 = new DeviceProfile("58HB6", 32, "escpos")
+{
+    CodePage = 437,
+    CodePageCommand = new byte[] { 0x1B, 0x74, 0x00 },
+    BaudRate = 115200,
+    SupportedBarcodes = new List<string> 
+    { 
+        "UPC-A", "UPC-E", "EAN13", "EAN8", 
+        "CODE39", "CODEBAR", "ITF", "CODE93", "CODE128", "QR" 
+    }
+};
+profile58HB6.SetCapability("supports_qrcode", true);
+profile58HB6.SetCapability("supports_barcode", true);
+profile58HB6.SetCapability("supports_images", false);
+```
+
+#### Cómo configurar el codepage correcto antes de imprimir
+
+Al inicializar la impresora, enviar el comando ESC t correspondiente:
+
+```csharp
+// Seleccionar codepage PC437
+buffer.AddRange(new byte[] { 0x1B, 0x74, 0x00 });
+```
+
+#### Tabla de caracteres españoles en PC437
+
+| Carácter | Hex  |
+|----------|------|
+| á        | 0xA0 |
+| é        | 0x82 |
+| í        | 0xA1 |
+| ó        | 0xA2 |
+| ú        | 0xA3 |
+| ñ        | 0xA4 |
+| Ñ        | 0xA5 |
+
 `PrinterProfile` incluye tres perfiles estáticos listos para usar:
 
 ### Tabla comparativa

@@ -49,4 +49,18 @@ public class PrinterProfile
         InitDelayMs = 50,
         FinalDelayMs = 200
     };
+
+    // Perfil real: 58HB6-6101 (basado en self-test)
+    public static PrinterProfile Real58HB6 => new()
+    {
+        Name = "58HB6-6101",
+        LineDelayMs = 150,
+        ByteDelayMs = 5,
+        InitDelayMs = 100,
+        FinalDelayMs = 500,
+        QrDelayMs = 300,
+        ImageDelayMs = 500,
+        CutDelayMs = 500,
+        InitCommandDelayMs = 300
+    };
 }

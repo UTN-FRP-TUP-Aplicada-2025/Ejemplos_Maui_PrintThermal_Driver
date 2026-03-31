@@ -6,14 +6,13 @@ using System.Text;
 
 namespace MotorDsl.Tests;
 
-/// <summary>
-/// Tests para EscPosRenderer (IRenderer, target "escpos").
-/// Sprint 04 | TK-20, TK-21, TK-26
-/// Valida generación de byte[] ESC/POS sin hardware.
-/// 6 tests.
-/// </summary>
 public class EscPosRendererTests
 {
+    static EscPosRendererTests()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+    }
+
     private readonly ILayoutEngine _layoutEngine = new LayoutEngine();
 
     private DeviceProfile EscPosProfile() => new("thermal-80mm", 48, "escpos");
