@@ -4,6 +4,19 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Authors>UTN-FRP-TUP-Aplicada-2025</Authors>
+    <Company>UTN-FRP-TUP-Aplicada-2025</Company>
+    <Description>Motor DSL para impresoras térmicas ESC/POS — Contratos, Parser, Evaluator y LayoutEngine</Description>
+    <PackageTags>escpos;thermal;printer;dsl;dotnet</PackageTags>
+    <PackageProjectUrl>https://github.com/UTN-FRP-TUP-Aplicada-2025/Ejemplos_Maui_PrintThermal_Driver</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/UTN-FRP-TUP-Aplicada-2025/Ejemplos_Maui_PrintThermal_Driver</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>
