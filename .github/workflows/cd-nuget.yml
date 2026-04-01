@@ -3,6 +3,7 @@ name: CD NuGet - Publish MotorDsl
 on:
   push:
     tags: ['v*']
+    branches: [main]
   workflow_dispatch:
     inputs:
       version:
@@ -30,17 +31,19 @@ jobs:
         if [[ "${{ github.ref }}" == refs/tags/* ]]; then
           VERSION="${{ github.ref_name }}"
           VERSION="${VERSION#v}"
-        else
+        elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
           VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION="0.0.0-preview.${{ github.run_number }}"
         fi
         echo "PACKAGE_VERSION=$VERSION" >> $GITHUB_ENV
         echo "Versión a publicar: $VERSION"
 
     - name: Restore
-      run: dotnet restore PrintThermalDriver.sln
+      run: dotnet restore src/MotorDsl.Tests/MotorDsl.Tests.csproj
 
     - name: Build Release
-      run: dotnet build PrintThermalDriver.sln -c Release --no-restore
+      run: dotnet build src/MotorDsl.Tests/MotorDsl.Tests.csproj -c Release --no-restore
 
     - name: Tests
       run: dotnet test src/MotorDsl.Tests/MotorDsl.Tests.csproj -c Release --no-build
@@ -59,6 +62,7 @@ jobs:
       run: ls -la ./nupkg/
 
     - name: Publish to GitHub Packages
+      if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
       run: |
         dotnet nuget push ./nupkg/*.nupkg \
           --api-key ${{ secrets.GITHUB_TOKEN }} \
