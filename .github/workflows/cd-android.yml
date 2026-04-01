@@ -9,6 +9,7 @@ on:
 env:
   DOTNET_VERSION: '10.0.102'
   DOTNET_VERSION_WORKLOAD: '10.0.100'
+  JAVA_VERSION: '17'
 
 jobs:
   build-android:
@@ -28,6 +29,12 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Setup Java ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'microsoft'
 
     - name: Setup .NET ${{ env.DOTNET_VERSION }}
       uses: actions/setup-dotnet@v4
@@ -61,4 +68,3 @@ jobs:
       with:
         name: ${{ matrix.app.name }}-APK-${{ github.run_number }}
         path: ${{ matrix.app.output }}/${{ matrix.app.package }}-Signed.apk
-        retention-days: 7

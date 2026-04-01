@@ -30,6 +30,15 @@ var profile58HB6 = new DeviceProfile("58HB6", 32, "escpos")
 profile58HB6.SetCapability("supports_qrcode", true);
 profile58HB6.SetCapability("supports_barcode", true);
 profile58HB6.SetCapability("supports_images", false);
+
+// Capacidades de imagen bitmap (1bpp, GS v 0)
+profile58HB6.SetCapability("supports_bitmap", true);
+profile58HB6.SetCapability("bitmap_max_width_px", 384);
+profile58HB6.SetCapability("bitmap_recommended_width_px", 320);
+profile58HB6.SetCapability("bitmap_max_height_px", 800);
+profile58HB6.SetCapability("bitmap_color_depth_bpp", 1);
+profile58HB6.SetCapability("bitmap_binarization_threshold", 128);
+profile58HB6.SetCapability("bitmap_command", "GS_v_0");
 ```
 
 ### Tabla de caracteres españoles en PC437

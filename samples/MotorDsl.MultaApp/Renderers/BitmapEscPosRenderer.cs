@@ -49,9 +49,13 @@ public class BitmapEscPosRenderer : IRenderer
                         var source = layoutInfo.DeviceMetadata.TryGetValue("bitmap_source", out var src)
                             ? src?.ToString() ?? ""
                             : "";
+                        int maxW = Convert.ToInt32(profile.GetCapability("bitmap_max_width_px") ?? 384);
                         var widthPixels = layoutInfo.DeviceMetadata.TryGetValue("bitmap_width", out var w)
-                            ? Convert.ToInt32(w) * 8
-                            : profile.Width * 8;
+                            ? Math.Min(Convert.ToInt32(w) * 8, maxW)
+                            : maxW;
+
+                        System.Console.WriteLine($"[BMP-ESCPOS] source_len={source?.Length ?? 0}");
+                        System.Console.WriteLine($"[BMP-ESCPOS] source={source?.Substring(0, Math.Min(100, source?.Length ?? 0))}");
 
                         var rasterized = _rasterizer.Rasterize(source, widthPixels);
                         buffer.AddRange(EmitGsV0(rasterized));

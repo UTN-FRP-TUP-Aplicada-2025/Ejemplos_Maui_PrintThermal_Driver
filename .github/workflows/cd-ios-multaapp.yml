@@ -1,11 +1,11 @@
-name: CD iOS - SampleApp - MotorDsl
+name: CD iOS - MultaApp - MotorDsl
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'samples/MotorDsl.SampleApp/**'
+      - 'samples/MotorDsl.MultaApp/**'
       - '!**.md'
       - '!**/*.gitignore'
       - '!**/*.gitattributes'
@@ -19,12 +19,12 @@ env:
   DOTNET_VERSION: '10.0.102'
   DOTNET_TARGET_VERSION: 'net10.0'
   DOTNET_VERSION_WORKLOAD: '10.0.100'
-  PACKAGE_NAME: 'com.motordsl.sampleapp'
+  PACKAGE_NAME: 'com.motordsl.multaapp'
   SOLUTION_FOLDER: 'samples'
-  PROJECTS_ROOT: 'MotorDsl.SampleApp'
-  PROJECT_NAME: 'MotorDsl.SampleApp'
-  PROJECT_FILE: 'MotorDsl.SampleApp.csproj'
-  VERSION_FECHA: '20260330'
+  PROJECTS_ROOT: 'MotorDsl.MultaApp'
+  PROJECT_NAME: 'MotorDsl.MultaApp'
+  PROJECT_FILE: 'MotorDsl.MultaApp.csproj'
+  VERSION_FECHA: '20260331'
   RUNTIME_IDENTIFIER_SIMULATOR: 'iossimulator-arm64'
   BUILD_CONFIG_SIMULATOR: 'Release'
   DEVICE_SIMULATOR: 'iPhone 17 Pro Max'
@@ -34,7 +34,7 @@ env:
 jobs:
   publish-ios:
     runs-on: macos-15
-    name: iOS Publish - MotorDsl.SampleApp
+    name: iOS Publish - MotorDsl.MultaApp
     steps:
     - name: Verificar arquitectura del runner (la mv)
       run: |
@@ -81,7 +81,7 @@ jobs:
       run: |
         set -euxo pipefail
         XCODE_PATH="/Applications/Xcode_${{ env.XCODE_VERSION }}.app"
-        echo "Applictions inicial: $(ls -lsh /Applications/)"
+        echo "Applications inicial: $(ls -lsh /Applications/)"
         sudo rm -rf /Applications/Xcode*.app
         sudo mv Xcode.app $XCODE_PATH
         sudo ln -s $XCODE_PATH /Applications/Xcode.app
@@ -91,7 +91,7 @@ jobs:
         sudo xcodebuild -runFirstLaunch
         sudo xcodebuild -license accept
         xcodebuild -version
-        echo "Applictions: $(ls -lsh /Applications/)"
+        echo "Applications: $(ls -lsh /Applications/)"
 
     - name: XCODE. Verificando actual (xcode y xcodebuild)
       run: |
@@ -127,7 +127,7 @@ jobs:
         sudo rm -rf /Users/runner/.dotnet
 
     - name: .NETCORE. Descarga e instalación de netcore
-      run: |  
+      run: |
         mkdir -p ~/.dotnet
         echo "Descargar e instalar con el script oficial"
         curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh
@@ -178,7 +178,7 @@ jobs:
         echo "Recursive path: $(ls -lshR $SOLUTION_PATH)"
 
     - name: PRE-BUILD. Versionado del bundle desde la version del app
-      run: |  
+      run: |
         PLIST_PATH=${{ env.PROJECT_PATH }}/Platforms/iOS/Info.plist
         BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" $PLIST_PATH)
         echo "Versión visible para los usuarios:"$BUNDLE_VERSION
@@ -190,19 +190,17 @@ jobs:
     - name: PRE-BUILD. Validar manifests iOS
       run: |
         echo "Validando plists"
-        plutil -lint "${{ env.PROJECT_PATH }}/Platforms/iOS/Info.plist" || { echo "ERROR: Info.plist inválido"; exit 1; }      
+        plutil -lint "${{ env.PROJECT_PATH }}/Platforms/iOS/Info.plist" || { echo "ERROR: Info.plist inválido"; exit 1; }
         echo "Todos los plists válidos"
 
-    - name: PRE-BUILD. Agregar target net10.0-ios al csproj si falta
+    - name: PRE-BUILD. Verificar que net10.0-ios está en el csproj
       run: |
-        PROJECT_CSPROJ=${{ env.PROJECT_PATH }}/MotorDsl.SampleApp.csproj
-        if grep -q "net10.0-android" "$PROJECT_CSPROJ" && ! grep -q "net10.0-ios" "$PROJECT_CSPROJ"; then
-          echo "Agregando net10.0-ios al csproj..."
-          sed -i 's|net10.0-android|net10.0-android;net10.0-ios|g' "$PROJECT_CSPROJ"
-          echo "csproj actualizado:"
-          cat "$PROJECT_CSPROJ" | grep TargetFrameworks
+        PROJECT_CSPROJ=${{ env.PROJECT_PATH }}/MotorDsl.MultaApp.csproj
+        if grep -q "net10.0-ios" "$PROJECT_CSPROJ"; then
+          echo "net10.0-ios presente en csproj — OK"
         else
-          echo "net10.0-ios ya está presente o no se encontró net10.0-android"
+          echo "ERROR: net10.0-ios no está en el csproj"
+          exit 1
         fi
 
     - name: BUILD SIMULADOR. Limpiar proyecto
@@ -220,7 +218,7 @@ jobs:
     - name: BUILD SIMULADOR. Construye para el simulador iOS
       env:
         MD_APPLE_SDK_ROOT: /Applications/Xcode_${{ env.XCODE_VERSION_SHORT }}.app
-        XCODE_DEVELOPER_DIR_PATH: /Applications/Xcode_${{ env.XCODE_VERSION_SHORT }}.app/Contents/Developer   
+        XCODE_DEVELOPER_DIR_PATH: /Applications/Xcode_${{ env.XCODE_VERSION_SHORT }}.app/Contents/Developer
       run: |
         cd ${{ env.SOLUTION_PATH }}
         echo "Proyecto: ${{ env.PROJECT_FILE }}"
@@ -240,7 +238,7 @@ jobs:
         ls -Rl "${{ env.PROJECTS_ROOT }}/${{ env.PROJECT_NAME }}/bin/"
         BASE_PATH=${{ env.PROJECT_PATH }}/bin/${{ env.BUILD_CONFIG_SIMULATOR }}/${{ env.DOTNET_TARGET_VERSION }}-ios/${{ env.RUNTIME_IDENTIFIER_SIMULATOR }}
         APP_PATH=${BASE_PATH}/${{ env.PROJECT_NAME }}.app
-        echo "BASE_PATH: $BASE_PATH"      
+        echo "BASE_PATH: $BASE_PATH"
         echo "APP_PATH: $APP_PATH"
         echo "BASE_PATH=$BASE_PATH" >> $GITHUB_ENV
         echo "APP_PATH=$APP_PATH" >> $GITHUB_ENV
@@ -257,26 +255,26 @@ jobs:
         cd ${{ env.SOLUTION_PATH }}
 
     - name: BUILD SIMULADOR. Test entitlements
-      run: |  
+      run: |
         file "${{ env.APP_PATH }}/${{ env.PROJECT_NAME }}"
         /usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "${{ env.APP_PATH }}/Info.plist"
         codesign -d --entitlements :- "${{ env.APP_PATH }}/${{ env.PROJECT_NAME }}"
 
     - name: BUILD RELEASE SIMULADOR. Zip del .app
-      run: |  
+      run: |
         echo "APP_PATH: ${{ env.APP_PATH }}"
         ZIP_NAME="${{ env.VERSION_FECHA }}_${{ env.APP_VERSION_BUILD }}_${{ env.PACKAGE_NAME }}.app.zip"
         echo "ZIP NAME: $ZIP_NAME"
         cd "${{ env.BASE_PATH }}"
         zip -ry "$ZIP_NAME" "${{ env.PROJECT_NAME }}.app"
         echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
-        echo "ZIP_PATH=${{ env.BASE_PATH }}/$ZIP_NAME" >> $GITHUB_ENV    
+        echo "ZIP_PATH=${{ env.BASE_PATH }}/$ZIP_NAME" >> $GITHUB_ENV
 
     - name: RELEASE SIMULADOR. Subir appName.app.zip como artefacto
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.ZIP_NAME }}
-        path: |          
+        path: |
           ${{ env.ZIP_PATH}}
         retention-days: 1
 

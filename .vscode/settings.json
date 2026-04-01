@@ -1,0 +1,10 @@
+{
+  "githubActions.workflows.pinned.workflows": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/cd-android.yml",
+    ".github/workflows/cd-ios-sampleapp.yml",
+    ".github/workflows/cd-ios-multaapp.yml"
+  ],
+  "githubActions.workflows.pinned.refresh.enabled": true,
+  "githubActions.workflows.pinned.refresh.interval": 30
+}

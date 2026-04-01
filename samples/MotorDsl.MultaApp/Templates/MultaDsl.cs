@@ -24,7 +24,7 @@ public static class MultaDsl
         "children": [
           {
             "type": "image",
-            "source": "data:image/png;base64,{{logoMunicipio}}",
+            "source": "data:image/bmp;base64,{{logoMunicipio}}",
             "imageType": "bitmap",
             "width": 200,
             "style": { "align": "center" }
@@ -159,7 +159,7 @@ public static class MultaDsl
           },
           {
             "type": "image",
-            "source": "data:image/png;base64,{{firmaInspector}}",
+            "source": "data:image/bmp;base64,{{firmaInspector}}",
             "imageType": "bitmap",
             "width": 150,
             "style": { "align": "center" }

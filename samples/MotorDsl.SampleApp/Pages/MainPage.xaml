@@ -34,13 +34,22 @@
                 </HorizontalStackLayout>
             </Frame>
 
-            <!-- Sección 1: Buscar dispositivos -->
+            <!-- Aviso iOS: sin impresión BT -->
+            <Frame BackgroundColor="#FFF3E0" BorderColor="#F57C00" Padding="12" CornerRadius="8"
+                   IsVisible="{OnPlatform Android=False, iOS=True}">
+                <Label Text="&#x2139;&#xFE0F; Impresión Bluetooth no disponible en iOS. Use la opción de vista previa para ver el documento."
+                       TextColor="#E65100" FontSize="13" HorizontalTextAlignment="Center" />
+            </Frame>
+
+            <!-- Sección 1: Buscar dispositivos (solo Android) -->
             <Label Text="1. Buscar Dispositivos"
                    FontSize="18"
                    FontAttributes="Bold"
-                   Margin="0,15,0,10"/>
+                   Margin="0,15,0,10"
+                   IsVisible="{OnPlatform Android=True, iOS=False}"/>
 
             <Button x:Name="ScanButton"
+                    IsVisible="{OnPlatform Android=True, iOS=False}"
                     Text="Escanear Dispositivos Bluetooth"
                     Clicked="OnScanClicked"
                     BackgroundColor="#2196F3"
@@ -62,13 +71,15 @@
                 </CollectionView.ItemTemplate>
             </CollectionView>
 
-            <!-- Sección 2: Conectar -->
+            <!-- Sección 2: Conectar (solo Android) -->
             <Label Text="2. Conectar"
                    FontSize="18"
                    FontAttributes="Bold"
-                   Margin="0,20,0,10"/>
+                   Margin="0,20,0,10"
+                   IsVisible="{OnPlatform Android=True, iOS=False}"/>
 
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10"
+                  IsVisible="{OnPlatform Android=True, iOS=False}">
                 <Button x:Name="ConnectButton"
                         Grid.Column="0"
                         Text="Conectar"
@@ -118,6 +129,7 @@
                     Text="Imprimir Ticket"
                     Clicked="OnPrintClicked"
                     BackgroundColor="#FF9800"
+                    IsVisible="{OnPlatform Android=True, iOS=False}"
                     TextColor="White"
                     IsEnabled="False"
                     CornerRadius="8"

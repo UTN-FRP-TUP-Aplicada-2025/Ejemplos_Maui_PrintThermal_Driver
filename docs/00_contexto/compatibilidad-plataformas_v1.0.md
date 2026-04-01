@@ -144,11 +144,39 @@ Si un equipo necesita soporte iOS con impresión, estos son los pasos:
 
 ---
 
-## 8. Control de cambios
+## 8. Estado de implementación iOS en apps de ejemplo
+
+### Sprint 08 — Soporte iOS añadido (TK-iOS)
+
+| Elemento | Estado | Detalle |
+|---|---|---|
+| `TargetFrameworks` MultaApp | ✅ | `net10.0-android;net10.0-ios` |
+| `TargetFrameworks` SampleApp | ✅ | `net10.0-android;net10.0-ios` |
+| `Platforms/iOS/Info.plist` (ambas apps) | ✅ | Creado con orientaciones y UIDeviceFamily |
+| `Platforms/iOS/AppDelegate.cs` (ambas apps) | ✅ | `MauiUIApplicationDelegate` + `CreateMauiApp()` |
+| `Platforms/iOS/Program.cs` (ambas apps) | ✅ | `UIApplication.Main` entry point |
+| `ThermalPrinterService.SendBytesAsync` | ✅ | `#if IOS` muestra `DisplayAlert` y retorna |
+| `ThermalPrinterService.ShowIosNotSupportedAsync()` | ✅ | Helper que notifica al usuario |
+| `MainPage.xaml` MultaApp — Frame BT | ✅ | `IsVisible="{OnPlatform Android=True, iOS=False}"` |
+| `MainPage.xaml` MultaApp — BtnImprimir | ✅ | `IsVisible="{OnPlatform Android=True, iOS=False}"` |
+| `MainPage.xaml` MultaApp — aviso iOS | ✅ | Frame naranja explicativo visible solo en iOS |
+| `MainPage.xaml` SampleApp — ScanButton | ✅ | `IsVisible="{OnPlatform Android=True, iOS=False}"` |
+| `MainPage.xaml` SampleApp — sección Conectar | ✅ | Grid + Label ocultados en iOS |
+| `MainPage.xaml` SampleApp — PrintButton | ✅ | `IsVisible="{OnPlatform Android=True, iOS=False}"` |
+| `MainPage.xaml.cs` MultaApp — `OnAppearing` | ✅ | `#elif IOS` evita llamar a `AutoConnectBluetoothAsync()` |
+| Build Android (0 errores) | ✅ | Verificado con `dotnet build -f net10.0-android` |
+| 185 tests unitarios | ✅ | Sin regresiones (`dotnet test`) |
+
+> **Nota:** La compilación para `net10.0-ios` requiere macOS con Xcode instalado. En Windows solo puede validarse la estructura del proyecto; el build completo se ejecuta en un agente macOS de CI/CD.
+
+---
+
+## 9. Control de cambios
 
 | Versión | Fecha      | Descripción |
 |---------|------------|-------------|
 | 1.0     | 2026-03-30 | Versión inicial — documentación de compatibilidad iOS/Android/Windows |
+| 1.1     | 2026-04-01 | Sprint 08 — implementación de soporte iOS en SampleApp y MultaApp |
 
 ---
 

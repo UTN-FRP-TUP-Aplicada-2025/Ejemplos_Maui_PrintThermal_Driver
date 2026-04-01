@@ -41,9 +41,11 @@ public static class MauiProgram
                 p.Add(new DeviceProfile("a4-pdf", 80, "pdf"));
                 p.Add(new DeviceProfile("pdf", 48, "pdf"));
             })
-            .AddRenderer<PdfRenderer>();
+            .AddRenderer<PdfRenderer>()
+            .AddRenderer<BitmapEscPosRenderer>();
 
-    // PDF and SkiaSharp renderers removed
+        // Bitmap rasterizer (SkiaSharp)
+        builder.Services.AddSingleton<IBitmapRasterizer, SkiaSharpRasterizer>();
 
         // Servicios de la app
         builder.Services.AddSingleton<IPrintErrorHandler, DefaultPrintErrorHandler>();

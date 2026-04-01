@@ -7,8 +7,9 @@
     <ScrollView>
         <VerticalStackLayout Padding="12" Spacing="10">
 
-            <!-- ═══ Estado Bluetooth ═══ -->
-            <Frame BackgroundColor="#E3F2FD" BorderColor="#1565C0" Padding="10" CornerRadius="8">
+            <!-- ═══ Estado Bluetooth (solo Android) ═══ -->
+            <Frame BackgroundColor="#E3F2FD" BorderColor="#1565C0" Padding="10" CornerRadius="8"
+                   IsVisible="{OnPlatform Android=True, iOS=False}">
                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto">
                     <Label x:Name="BtStatusLabel" Text="Bluetooth: buscando..."
                            FontSize="14" VerticalOptions="Center" />
@@ -17,6 +18,13 @@
                             TextColor="White" CornerRadius="6" HeightRequest="36"
                             FontSize="12" IsVisible="False" />
                 </Grid>
+            </Frame>
+
+            <!-- ═══ Aviso iOS: sin impresion BT ═══ -->
+            <Frame BackgroundColor="#FFF3E0" BorderColor="#F57C00" Padding="10" CornerRadius="8"
+                   IsVisible="{OnPlatform Android=False, iOS=True}">
+                <Label Text="&#x2139;&#xFE0F; Impresión Bluetooth no disponible en iOS. Use \u2018Ver PDF\u2019 para generar el documento."
+                       TextColor="#E65100" FontSize="13" HorizontalTextAlignment="Center" />
             </Frame>
 
             <!-- ═══ Lista de dispositivos (visible solo si hay varios) ═══ -->
@@ -70,7 +78,8 @@
                         TextColor="White" CornerRadius="8" HeightRequest="44" FontSize="13" />
                 <Button x:Name="BtnImprimir" Text="Imprimir" Grid.Column="1"
                         Clicked="OnImprimirClicked" BackgroundColor="#2196F3"
-                        TextColor="White" CornerRadius="8" HeightRequest="44" FontSize="13" />
+                        TextColor="White" CornerRadius="8" HeightRequest="44" FontSize="13"
+                        IsVisible="{OnPlatform Android=True, iOS=False}" />
                 <Button x:Name="BtnVerPdf" Text="Ver PDF" Grid.Column="2"
                         Clicked="OnVerPdfClicked" BackgroundColor="#FF9800"
                         TextColor="White" CornerRadius="8" HeightRequest="44" FontSize="13" />

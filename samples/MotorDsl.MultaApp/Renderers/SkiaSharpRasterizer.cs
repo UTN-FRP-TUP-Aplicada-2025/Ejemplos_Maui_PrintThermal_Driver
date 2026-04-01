@@ -14,6 +14,9 @@ public class SkiaSharpRasterizer : IBitmapRasterizer
 {
     public RasterizedImage Rasterize(string source, int widthPixels)
     {
+        System.Console.WriteLine($"[SKIA] rasterize source_len={source?.Length ?? 0}");
+        System.Console.WriteLine($"[SKIA] rasterize source={source?.Substring(0, Math.Min(100, source?.Length ?? 0))}");
+
         var bitmap = DecodeSource(source);
 
         // Scale to target width maintaining aspect ratio
@@ -54,15 +57,23 @@ public class SkiaSharpRasterizer : IBitmapRasterizer
 
     private static SKBitmap DecodeSource(string source)
     {
-        // data:image/png;base64,iVBOR...
-        if (source.Contains(","))
-        {
-            var base64 = source[(source.IndexOf(',') + 1)..];
-            var bytes = Convert.FromBase64String(base64);
-            return SKBitmap.Decode(bytes)
-                ?? throw new InvalidOperationException("Failed to decode bitmap from base64 source.");
-        }
+        // Remover prefijo data:image/...;base64, si existe
+        var base64Clean = source.Contains(",")
+            ? source[(source.IndexOf(',') + 1)..]
+            : source;
 
-        throw new ArgumentException("Unsupported image source format. Expected data:image URI.", nameof(source));
+        // Remover saltos de línea, espacios y caracteres extra que invalidan base64
+        base64Clean = base64Clean
+            .Replace("\r", "")
+            .Replace("\n", "")
+            .Replace(" ", "")
+            .Trim();
+
+        if (string.IsNullOrEmpty(base64Clean))
+            throw new ArgumentException("Fuente de imagen vacía.", nameof(source));
+
+        var bytes = Convert.FromBase64String(base64Clean);
+        return SKBitmap.Decode(bytes)
+            ?? throw new InvalidOperationException("SkiaSharp no pudo decodificar la imagen desde base64.");
     }
 }

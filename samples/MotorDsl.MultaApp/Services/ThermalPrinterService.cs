@@ -148,7 +148,10 @@ public class ThermalPrinterService : IThermalPrinterService
 
     public async Task SendBytesAsync(byte[] data, PrinterProfile? profile = null, PrintRetryOptions? retryOptions = null)
     {
-#if ANDROID
+#if IOS
+        await ShowIosNotSupportedAsync();
+        return;
+#elif ANDROID
         profile ??= PrinterProfile.Thermal58mm;
         retryOptions ??= new PrintRetryOptions();
 
@@ -241,4 +244,23 @@ public class ThermalPrinterService : IThermalPrinterService
 
         return lines;
     }
+
+#if IOS
+    /// <summary>
+    /// iOS: Bluetooth clásico SPP no soportado. Muestra alerta al usuario.
+    /// </summary>
+    private static Task ShowIosNotSupportedAsync()
+    {
+        MainThread.BeginInvokeOnMainThread(async () =>
+        {
+            if (Application.Current?.MainPage is Page page)
+                await page.DisplayAlert(
+                    "No disponible en iOS",
+                    "La impresión por Bluetooth clásico (SPP) no está disponible en iOS. " +
+                    "Use la función \u2018Ver PDF\u2019 para generar el documento.",
+                    "OK");
+        });
+        return Task.CompletedTask;
+    }
+#endif
 }

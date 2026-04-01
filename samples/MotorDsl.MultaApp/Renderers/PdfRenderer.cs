@@ -67,7 +67,9 @@ namespace MotorDsl.MultaApp.Renderers
                     {
                         try
                         {
-                            var base64 = bmpStr.Contains(',') ? bmpStr.Split(',')[1] : bmpStr;
+                            // Remover prefijo data URI y limpiar caracteres inválidos
+                            var base64 = bmpStr.Contains(',') ? bmpStr[(bmpStr.IndexOf(',') + 1)..] : bmpStr;
+                            base64 = base64.Replace("\r", "").Replace("\n", "").Replace(" ", "").Trim();
                             var imageBytes = Convert.FromBase64String(base64);
                             var xImage = XImage.FromStream(() => new MemoryStream(imageBytes));
                             double imgWidth = Math.Min(node.DeviceMetadata.TryGetValue("bitmap_width", out var bw)

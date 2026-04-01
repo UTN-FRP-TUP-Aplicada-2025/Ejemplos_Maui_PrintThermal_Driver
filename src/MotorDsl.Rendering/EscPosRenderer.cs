@@ -8,9 +8,17 @@ namespace MotorDsl.Rendering;
 /// Renderer that generates ESC/POS byte[] commands for thermal printers.
 /// No external dependencies (no ESCPOS_NET).
 /// Sprint 04 | TK-20
+/// Sprint 08 | TK-64 — soporte opcional de bitmap vía IBitmapRasterizer
 /// </summary>
 public class EscPosRenderer : IRenderer
 {
+    private readonly IBitmapRasterizer? _rasterizer;
+
+    public EscPosRenderer(IBitmapRasterizer? rasterizer = null)
+    {
+        _rasterizer = rasterizer;
+    }
+
     public string Target => "escpos";
 
     public RenderResult Render(LayoutedDocument document, DeviceProfile profile)
@@ -52,13 +60,13 @@ public class EscPosRenderer : IRenderer
                         continue;
                     }
 
-                    // Bitmap image — no rasterizer available, emit text placeholder
+                    // Bitmap image — emit GS v 0 si hay rasterizador, sino placeholder
                     if (layoutInfo.DeviceMetadata.TryGetValue("is_bitmap", out var bmpFlag) && bmpFlag is true)
                     {
-                        buffer.AddRange(EscPosCommands.AlignCenter);
-                        buffer.AddRange(EncodeText("[BITMAP]"));
-                        buffer.AddRange(EscPosCommands.LineFeed);
-                        buffer.AddRange(EscPosCommands.AlignLeft);
+                        var source = layoutInfo.DeviceMetadata.TryGetValue("bitmap_source", out var src)
+                            ? src?.ToString() ?? ""
+                            : "";
+                        EmitBitmap(buffer, source, profile, _rasterizer);
                         continue;
                     }
 
@@ -154,5 +162,59 @@ public class EscPosRenderer : IRenderer
         buffer.Add(0x00); // NUL terminator
 
         return buffer.ToArray();
+    }
+
+    /// <summary>
+    /// Emite un bitmap como comando GS v 0 (0x1D 0x76 0x30) si hay rasterizador disponible.
+    /// Si no hay rasterizador o ocurre un error, emite el placeholder textual "[BITMAP]" + LF.
+    /// Sprint 08 | TK-64
+    /// </summary>
+    private static void EmitBitmap(List<byte> buffer, string base64Source,
+        DeviceProfile profile, IBitmapRasterizer? rasterizer)
+    {
+        try
+        {
+            // 1. Extraer base64 puro (quitar prefijo data:image/...;base64,)
+            var base64 = base64Source.Contains(",")
+                ? base64Source.Split(',')[1]
+                : base64Source;
+
+            if (string.IsNullOrEmpty(base64) || rasterizer == null)
+            {
+                // Sin rasterizador: placeholder textual
+                buffer.AddRange(Encoding.ASCII.GetBytes("[BITMAP]"));
+                buffer.Add(0x0A);
+                return;
+            }
+
+            // 2. Obtener límites del perfil
+            int maxW = Convert.ToInt32(profile.GetCapability("bitmap_max_width_px") ?? 384);
+
+            // 3. Rasterizar: el IBitmapRasterizer adapta ancho, escala, binariza
+            var rasterized = rasterizer.Rasterize(base64Source, maxW);
+
+            int bytesPerRow = rasterized.WidthBytes;
+            int alto = rasterized.HeightDots;
+
+            // 4. Construir GS v 0 (0x1D 0x76 0x30 0x00 xL xH yL yH datos...)
+            buffer.AddRange(EscPosCommands.AlignCenter);
+            buffer.Add(0x1D); // GS
+            buffer.Add(0x76); // v
+            buffer.Add(0x30); // 0
+            buffer.Add(0x00); // m = normal density
+            buffer.Add((byte)(bytesPerRow & 0xFF));  // xL
+            buffer.Add((byte)(bytesPerRow >> 8));    // xH
+            buffer.Add((byte)(alto & 0xFF));         // yL
+            buffer.Add((byte)(alto >> 8));           // yH
+            buffer.AddRange(rasterized.Bits);
+            buffer.AddRange(EscPosCommands.LineFeed);
+            buffer.AddRange(EscPosCommands.AlignLeft);
+        }
+        catch
+        {
+            // Fallback: placeholder textual
+            buffer.AddRange(Encoding.ASCII.GetBytes("[BITMAP]"));
+            buffer.Add(0x0A);
+        }
     }
 }

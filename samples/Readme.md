@@ -275,3 +275,6 @@ dotnet build -t:Run -f net10.0-android samples\MotorDsl.MultaApp\MotorDsl.MultaA
 
 ## lanzar una aplicacion con adb
 adb shell am start -n com.motordsl.multaapp/crc6483bd6c7d9597e925.MainActivity
+
+## compilar  y correr - sin el apk cacheado - tarda mas la recompilacion
+dotnet build -t:Run -f net10.0-android samples\MotorDsl.MultaApp\MotorDsl.MultaApp.csproj --no-incremental

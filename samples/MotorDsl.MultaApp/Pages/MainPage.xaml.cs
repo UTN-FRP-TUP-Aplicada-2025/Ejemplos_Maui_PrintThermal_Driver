@@ -44,6 +44,9 @@ public partial class MainPage : ContentPage
         var granted = await RequestBluetoothPermissions();
         if (granted)
             await AutoConnectBluetoothAsync();
+#elif IOS
+        // iOS: Bluetooth clásico SPP no disponible; nada que inicializar.
+        await Task.CompletedTask;
 #else
         await AutoConnectBluetoothAsync();
 #endif
@@ -183,6 +186,9 @@ public partial class MainPage : ContentPage
         var granted = await RequestBluetoothPermissions();
         if (granted)
             await AutoConnectBluetoothAsync();
+#elif IOS
+        // iOS: Bluetooth clásico SPP no disponible; nada que inicializar.
+        await Task.CompletedTask;
 #else
         await AutoConnectBluetoothAsync();
 #endif
@@ -250,34 +256,40 @@ public partial class MainPage : ContentPage
         var doc = GetSelectedDocument();
         if (doc == null) return;
 
-        if (!_printer.IsConnected)
-        {
-            ShowMessage("No hay impresora conectada. Usá 'Reconectar'.");
-            return;
-        }
-
         try
         {
+            // ── 1. Render SIEMPRE primero (diagnóstico independiente de impresora) ──
             ShowMessage("Generando ESC/POS...");
-            var profile = new DeviceProfile("thermal_58mm", 32, "escpos");
+            var profile = new DeviceProfile("58HB6", 32, "escpos-bitmap");
+            profile.SetCapability("supports_bitmap", true);
+            profile.SetCapability("bitmap_max_width_px", 320);
+            profile.SetCapability("bitmap_binarization_threshold", 128);
             var result = _engine.Render(doc.Value.Template, doc.Value.Data, profile);
 
-            if (result.IsSuccessful && result.Output is byte[] bytes)
+            if (!result.IsSuccessful || result.Output is not byte[] bytes)
             {
-                ShowMessage($"Bytes a enviar: {bytes.Length}");
-                await Task.Delay(2000);
-                if (_printer == null)
-                {
-                    MessageLabel.Text = "Error: _printerService es null";
-                    return;
-                }
-                await _printer.SendBytesAsync(bytes);
-                ShowMessage($"Impreso OK — {bytes.Length} bytes enviados.");
+                var firstErr = result.Errors.FirstOrDefault() ?? "sin errores";
+                var snippet = firstErr.Length > 200 ? firstErr[..200] : firstErr;
+                MessageLabel.Text = $"{DateTime.Now:HH:mm:ss} RENDER FALLÓ:\n{snippet}";
+                System.Console.WriteLine($"[MULTA-RENDER-ERROR] {firstErr}");
+                foreach (var w in result.Warnings)
+                    System.Console.WriteLine($"[MULTA-WARN] {w}");
+                return;
             }
-            else
+
+            ShowMessage($"Render OK — {bytes.Length} bytes");
+            System.Console.WriteLine($"[MULTA] Render OK: {bytes.Length} bytes");
+
+            // ── 2. Verificar impresora antes de enviar ──
+            if (!_printer.IsConnected)
             {
-                ShowMessage("Error: " + string.Join("; ", result.Errors));
+                ShowMessage($"Render OK ({bytes.Length} bytes) pero no hay impresora conectada.");
+                return;
             }
+
+            await Task.Delay(500);
+            await _printer.SendBytesAsync(bytes);
+            ShowMessage($"Impreso OK — {bytes.Length} bytes enviados.");
         }
         catch (Exception ex)
         {

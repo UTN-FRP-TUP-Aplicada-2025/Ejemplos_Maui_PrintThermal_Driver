@@ -126,6 +126,7 @@ public class Evaluator : IEvaluator
             ConditionalNode conditionalNode => EvaluateConditionalNode(conditionalNode, data, warnings),
             LoopNode loopNode => EvaluateLoopNode(loopNode, data, warnings),
             ContainerNode containerNode => EvaluateContainerNode(containerNode, data, warnings),
+            ImageNode imageNode => EvaluateImageNode(imageNode, data, warnings),
             _ => node // Return other node types as-is
         };
     }
@@ -164,6 +165,24 @@ public class Evaluator : IEvaluator
     private TextNode? EvaluateTextNode(TextNode node, object? data)
     {
         return EvaluateTextNode(node, data, new List<string>());
+    }
+
+    private ImageNode EvaluateImageNode(ImageNode node, object? data, List<string> warnings)
+    {
+        // Interpolate {{variables}} in the image source URI
+        var resolvedSource = Regex.Replace(node.Source ?? "", @"\{\{([^}]+)\}\}", (match) =>
+        {
+            string varPath = match.Groups[1].Value;
+            var value = ResolveVariable(data, varPath);
+            if (value == null)
+            {
+                warnings.Add($"Unresolved variable in image source: {varPath}");
+                return match.Value; // keep placeholder
+            }
+            return value.ToString() ?? "";
+        });
+
+        return new ImageNode(resolvedSource, node.Width, node.Height, node.ImageType);
     }
 
     private DocumentNode? EvaluateConditionalNode(ConditionalNode node, object? data, List<string> warnings)
