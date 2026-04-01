@@ -2,76 +2,66 @@ name: CD NuGet - Publish MotorDsl
 
 on:
   push:
-    tags: ['v*']
-    branches: [main]
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versión a publicar (ej: 1.0.0)'
+        description: 'Version to publish (e.g. 1.0.0)'
         required: true
-
-env:
-  DOTNET_VERSION: '10.0.102'
+        default: '1.0.0'
 
 jobs:
-  publish-nuget:
+  publish:
+    name: Pack & Publish to NuGet.org
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup .NET ${{ env.DOTNET_VERSION }}
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
 
-    - name: Determinar versión
-      run: |
-        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-          VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}"
-        elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          VERSION="${{ github.event.inputs.version }}"
-        else
-          VERSION="0.0.0-preview.${{ github.run_number }}"
-        fi
-        echo "PACKAGE_VERSION=$VERSION" >> $GITHUB_ENV
-        echo "Versión a publicar: $VERSION"
+      - name: Get version from tag or input
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
 
-    - name: Restore
-      run: dotnet restore src/MotorDsl.Tests/MotorDsl.Tests.csproj
+      - name: Restore
+        run: dotnet restore src/MotorDsl.Core/MotorDsl.Core.csproj
+        # Resto de proyectos dependen de Core
 
-    - name: Build Release
-      run: dotnet build src/MotorDsl.Tests/MotorDsl.Tests.csproj -c Release --no-restore
+      - name: Build
+        run: |
+          dotnet build src/MotorDsl.Core/MotorDsl.Core.csproj -c Release --no-restore
+          dotnet build src/MotorDsl.Parser/MotorDsl.Parser.csproj -c Release --no-restore
+          dotnet build src/MotorDsl.Rendering/MotorDsl.Rendering.csproj -c Release --no-restore
+          dotnet build src/MotorDsl.Extensions/MotorDsl.Extensions.csproj -c Release --no-restore
 
-    - name: Tests
-      run: dotnet test src/MotorDsl.Tests/MotorDsl.Tests.csproj -c Release --no-build
+      - name: Pack
+        run: |
+          dotnet pack src/MotorDsl.Core/MotorDsl.Core.csproj -c Release --no-build -o ./nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
+          dotnet pack src/MotorDsl.Parser/MotorDsl.Parser.csproj -c Release --no-build -o ./nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
+          dotnet pack src/MotorDsl.Rendering/MotorDsl.Rendering.csproj -c Release --no-build -o ./nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
+          dotnet pack src/MotorDsl.Extensions/MotorDsl.Extensions.csproj -c Release --no-build -o ./nupkgs /p:Version=${{ steps.version.outputs.VERSION }}
 
-    - name: Pack los 4 proyectos de la librería
-      run: |
-        for proj in Core Parser Rendering Extensions; do
-          dotnet pack src/MotorDsl.$proj/MotorDsl.$proj.csproj \
-            -c Release \
-            --no-build \
-            -p:PackageVersion=${{ env.PACKAGE_VERSION }} \
-            -o ./nupkg
-        done
+      - name: Upload packages as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages-${{ steps.version.outputs.VERSION }}
+          path: ./nupkgs/*.nupkg
 
-    - name: Listar paquetes generados
-      run: ls -la ./nupkg/
-
-    - name: Publish to GitHub Packages
-      if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-      run: |
-        dotnet nuget push ./nupkg/*.nupkg \
-          --api-key ${{ secrets.GITHUB_TOKEN }} \
-          --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json \
-          --skip-duplicate
-
-    - name: Upload nupkg artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: nuget-packages-${{ env.PACKAGE_VERSION }}
-        path: ./nupkg/*.nupkg
-        retention-days: 30
+      - name: Publish to NuGet.org
+        run: |
+          dotnet nuget push ./nupkgs/*.nupkg \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
