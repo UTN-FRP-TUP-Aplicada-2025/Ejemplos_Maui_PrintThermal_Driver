@@ -2,16 +2,16 @@
 
 cd  ..
 
-set PROJECT_PATH=samples\MotorDsl.SampleApp\MotorDsl.SampleApp.csproj
+set PROJECT_PATH=samples\MotorDsl.MultaApp.Nuget\MotorDsl.MultaApp.Nuget.csproj
 set OUTPUT_PATH=output
 
 echo Limpiando residuos de compilaciones anteriores...
 :: Borra las carpetas bin y obj para asegurar un rebuild real
-if exist samples\MotorDsl.SampleApp\bin rd /s /q samples\MotorDsl.SampleApp\bin
-if exist samples\MotorDsl.SampleApp\obj rd /s /q samples\MotorDsl.SampleApp\obj
+if exist samples\MotorDsl.MultaApp.Nuget\bin rd /s /q samples\MotorDsl.MultaApp.Nuget\bin
+if exist samples\MotorDsl.MultaApp.Nuget\obj rd /s /q samples\MotorDsl.MultaApp.Nuget\obj
 
 echo.
-echo Publicando SampleApp (Rebuild total) como APK...
+echo Publicando MultaApp (Rebuild total) como APK...
 dotnet publish %PROJECT_PATH% ^
   -f net10.0-android ^
   -c Release ^
@@ -22,7 +22,7 @@ dotnet publish %PROJECT_PATH% ^
 
 echo.
 echo APK generado en: %OUTPUT_PATH%\
-echo Instalá con: adb install %OUTPUT_PATH%\com.motordsl.sampleapp-Signed.apk
+echo Instalá con: adb install %OUTPUT_PATH%\com.motordsl.multaapp.nuget-Signed.apk
 pause
 
 echo.
