@@ -120,7 +120,7 @@ Simular un entorno equivalente a producción para validar releases del motor ant
 
 ### 6.1 Propósito
 
-Publicar versiones estables del motor DSL como librería consumible (paquete NuGet o equivalente) y/o servicios asociados.
+Publicar versiones estables del motor DSL como librería consumible en **NuGet.org**.
 
 ### 6.2 Características
 
@@ -130,7 +130,24 @@ Publicar versiones estables del motor DSL como librería consumible (paquete NuG
 * Seguridad reforzada
 * Versiones inmutables
 
-### 6.3 Reglas
+### 6.3 Destino de publicación NuGet
+
+| Paquete              | Registry              | URL                                        | Versión actual |
+|----------------------|-----------------------|--------------------------------------------|----------------|
+| MotorDsl.Core        | nuget.org             | https://www.nuget.org/packages/MotorDsl.Core     | 1.0.2          |
+| MotorDsl.Parser      | nuget.org             | https://www.nuget.org/packages/MotorDsl.Parser   | 1.0.2          |
+| MotorDsl.Rendering   | nuget.org             | https://www.nuget.org/packages/MotorDsl.Rendering| 1.0.2          |
+| MotorDsl.Extensions  | nuget.org             | https://www.nuget.org/packages/MotorDsl.Extensions | 1.0.2        |
+
+**Trigger:** tag `v*` en GitHub (ej. `v1.0.2`).  
+**Secret requerido:** `NUGET_API_KEY` (configurado en GitHub Secrets).  
+**Workflow:** `.github/workflows/cd-nuget.yml`.
+
+### 6.4 Validación en producción
+
+La app `samples/MotorDsl.MultaApp.Nuget` funciona como test de integración end-to-end: consume los 4 paquetes desde nuget.org y verifica que el pipeline DSL completo funciona en una app MAUI real.
+
+### 6.5 Reglas
 
 * Solo versiones aprobadas pueden publicarse
 * Requiere pipeline CI/CD exitoso
@@ -294,5 +311,6 @@ Incluye:
 | Versión | Fecha      | Autor  | Descripción                    |
 | ------- | ---------- | ------ | ------------------------------ |
 | v1.0    | 2026-03-28 | DevOps | Definición inicial de entornos |
+| v1.1    | 2026-04-02 | DevOps | PROD = NuGet.org real; tablas de paquetes publicados; sample MultaApp.Nuget |
 
 ---

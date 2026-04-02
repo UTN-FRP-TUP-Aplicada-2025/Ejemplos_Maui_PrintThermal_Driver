@@ -6,10 +6,11 @@
 
 ## Índice de Ejemplos
 
-| #  | Proyecto               | Nivel     | Descripción                                        |
-|----|------------------------|-----------|----------------------------------------------------|
-| 01 | MotorDsl.SampleApp     | Básico    | Ticket simple — aprender la librería paso a paso   |
-| 02 | MotorDsl.MultaApp      | Avanzado  | Multa de tránsito — todas las funcionalidades      |
+| #  | Proyecto                    | Nivel     | Descripción                                                              |
+|----|-----------------------------|-----------|--------------------------------------------------------------------------|
+| 01 | MotorDsl.SampleApp          | Básico    | Ticket simple — aprender la librería paso a paso                         |
+| 02 | MotorDsl.MultaApp           | Avanzado  | Multa de tránsito — todas las funcionalidades, via ProjectReference      |
+| 03 | MotorDsl.MultaApp.Nuget     | Avanzado  | Idem MultaApp — consume los paquetes NuGet publicados en nuget.org      |
 
 ---
 
@@ -89,14 +90,67 @@ Pantalla principal con pestañas:
 cd samples/MotorDsl.SampleApp
 dotnet build -f net10.0-android
 
-# Ejemplo 02 (Sprint 08)
+# Ejemplo 02 (via ProjectReference)
 cd samples/MotorDsl.MultaApp
+dotnet build -f net10.0-android
+
+# Ejemplo 03 (via NuGet packages)
+cd samples/MotorDsl.MultaApp.Nuget
 dotnet build -f net10.0-android
 ```
 
 > Ambos requieren un dispositivo Android conectado o emulador con soporte Bluetooth para pruebas de impresión.
 
 ---
+
+## Ejemplo 03 — MotorDsl.MultaApp.Nuget
+
+**Ubicación:** `samples/MotorDsl.MultaApp.Nuget/`
+
+### Propósito dual
+
+1. **Test de integración end-to-end:** valida que los 4 paquetes publicados en NuGet.org funcionen correctamente en una app MAUI real.
+2. **Ejemplo para el usuario final:** demuestra la forma canónica de integrar MotorDsl en un proyecto nuevo, sin necesidad de clonar el repositorio.
+
+### Diferencia clave con MultaApp
+
+| Aspecto              | MotorDsl.MultaApp         | MotorDsl.MultaApp.Nuget          |
+|----------------------|---------------------------|----------------------------------|
+| Referencias motor    | `<ProjectReference>`      | `<PackageReference>` v1.0.2      |
+| ApplicationId        | com.motordsl.multaapp     | com.motordsl.multaapp.nuget      |
+| Namespace            | MotorDsl.MultaApp.*       | MotorDsl.MultaApp.Nuget.*        |
+| Propósito principal  | Desarrollo del motor      | Consumidor final / integración   |
+
+### Referencias NuGet usadas
+
+```xml
+<PackageReference Include="MotorDsl.Core"       Version="1.0.2" />
+<PackageReference Include="MotorDsl.Parser"     Version="1.0.2" />
+<PackageReference Include="MotorDsl.Rendering"  Version="1.0.2" />
+<PackageReference Include="MotorDsl.Extensions" Version="1.0.2" />
+```
+
+### Qué demuestra
+
+- Instalación de MotorDsl desde NuGet.org (`Install-Package MotorDsl.Extensions`)
+- Configuración DI con `AddMotorDslEngine()` desde un NuGet
+- Renderers custom (`BitmapEscPosRenderer`, `PdfRenderer`) implementados por la app (no incluidos en el NuGet)
+- `IBitmapRasterizer` implementado con SkiaSharp localmente
+- Funcionalidad idéntica a MultaApp: impresión BT (Android), PDF, preview, iOS stub
+
+### Estructura de archivos
+
+```
+samples/MotorDsl.MultaApp.Nuget/
+├── MotorDsl.MultaApp.Nuget.csproj  ← PackageReference en lugar de ProjectReference
+├── MauiProgram.cs
+├── Templates/   (MultaDsl, TicketSimpleDsl, ComprobanteDsl)
+├── Pages/       (MainPage)
+├── Renderers/   (BitmapEscPosRenderer, PdfRenderer, SkiaSharpRasterizer)
+├── Services/    (ThermalPrinterService, IThermalPrinterService, PrinterProfile)
+├── Controls/    (MauiDocumentPreview)
+└── Platforms/   (Android + iOS)
+```
 
 ## Relación con la documentación
 

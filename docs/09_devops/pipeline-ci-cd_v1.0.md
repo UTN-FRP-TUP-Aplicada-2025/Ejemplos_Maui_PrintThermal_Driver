@@ -29,7 +29,6 @@ El pipeline cubre:
 
 Fuera de alcance en v1.0:
 
-- Publicación automática en producción (nuget.org)  
 - Firma de paquetes  
 - Escaneo de seguridad avanzado  
 - Publicación multi-registry  
@@ -191,17 +190,21 @@ MotorDsl.1.2.0.nupkg
 
 * Solo en tags de versión
 
-**Destinos posibles**
+**Destino**
 
-* NuGet local (filesystem)
-* Azure Artifacts
-* GitHub Packages
-* NuGet.org (futuro)
+* **NuGet.org** (https://api.nuget.org/v3/index.json) — producción
+
+**Condición adicional:** solo en tags `v*` (ej. `v1.0.2`)
+
+**Secret requerido:** `NUGET_API_KEY` (configurado en GitHub Secrets)
+
+**Metadatos requeridos en cada csproj:**
+`<PackageId>`, `<Authors>`, `<Description>`, `<PackageTags>`, `<PackageLicenseExpression>`, `<RepositoryUrl>`
 
 **Comando base**
 
 ```bash
-dotnet nuget push MotorDsl.1.2.0.nupkg --api-key <API_KEY> --source <URL>
+dotnet nuget push MotorDsl.1.2.0.nupkg --api-key <NUGET_API_KEY> --source https://api.nuget.org/v3/index.json
 ```
 
 ---
@@ -217,11 +220,12 @@ dotnet nuget push MotorDsl.1.2.0.nupkg --api-key <API_KEY> --source <URL>
 
 ### 5.8 Stage: CD iOS (simulador)
 
-**Trigger:** push main o tag v*
+**Trigger:** push main (en paths `samples/MotorDsl.SampleApp/**` o `samples/MotorDsl.MultaApp/**`)
 
-- Solo SampleApp (sin BT)
+- SampleApp y MultaApp en workflows separados
 - Genera .app.zip para simulador iossimulator-arm64
 - Artifact: *.app.zip con retención 1 día
+- Runner requerido: `macos-15`, Xcode 26.0
 
 ---
 
@@ -313,10 +317,11 @@ pack:
 publish:
 ```text
 .github/workflows/
-├── ci.yml              ← tests en cada PR y push
-├── cd-android.yml      ← APK SampleApp + MultaApp  
-├── cd-ios-sampleapp.yml ← .app.zip simulador iOS
-└── cd-nuget.yml        ← NuGet en tags v*
+├── ci.yml                   ← tests en cada PR y push (185 tests, ubuntu-latest)
+├── cd-android.yml           ← APK SampleApp + MultaApp (ubuntu-latest)
+├── cd-ios-sampleapp.yml     ← .app.zip SampleApp, iossimulator-arm64 (macos-15)
+├── cd-ios-multaapp.yml      ← .app.zip MultaApp, iossimulator-arm64 (macos-15)
+└── cd-nuget.yml             ← NuGet.org en tags v*, NUGET_API_KEY (ubuntu-latest)
 ```
 
 ---
@@ -334,9 +339,15 @@ publish:
 
 ## 13. Evolución futura
 
+Implementado en v1.0 (actualización):
+
+- ✅ Publicación automática en NuGet.org (cd-nuget.yml con NUGET_API_KEY)
+- ✅ 4 paquetes publicados: MotorDsl.Core, Parser, Rendering, Extensions v1.0.2
+- ✅ Soporte iOS: cd-ios-sampleapp.yml y cd-ios-multaapp.yml
+- ✅ Sample de integración NuGet: MotorDsl.MultaApp.Nuget
+
 Planeado para v2.x:
 
-- Publicación automática en NuGet.org
 - Firma de paquetes
 - Validación de compatibilidad (breaking changes)
 - Escaneo de seguridad (SCA)
@@ -353,5 +364,6 @@ Planeado para v2.x:
 | Versión | Fecha      | Autor  | Descripción                             |
 | ------- | ---------- | ------ | --------------------------------------- |
 | v1.0    | 2026-03-29 | DevOps | Pipeline inicial para publicación NuGet |
+| v1.1    | 2026-04-02 | DevOps | Publicación real en NuGet.org (NUGET_API_KEY), cd-ios-multaapp.yml, MotorDsl.MultaApp.Nuget sample |
 
 ---

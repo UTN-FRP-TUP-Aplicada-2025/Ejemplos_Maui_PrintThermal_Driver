@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MotorDsl.SampleApp", "sampl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MotorDsl.MultaApp", "samples\MotorDsl.MultaApp\MotorDsl.MultaApp.csproj", "{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MotorDsl.MultaApp.Nuget", "samples\MotorDsl.MultaApp.Nuget\MotorDsl.MultaApp.Nuget.csproj", "{2F9BC13B-A1DD-53E8-93D8-8759839DE98F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -115,6 +117,18 @@ Global
 		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Release|x64.Build.0 = Release|Any CPU
 		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Release|x86.ActiveCfg = Release|Any CPU
 		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E}.Release|x86.Build.0 = Release|Any CPU
+		{2F9BC13B-A1DD-53E8-93D8-8759839DE98F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F9BC13B-A1DD-53E8-93D8-8759839DE98F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F9BC13B-A1DD-53E8-93D8-8759839DE98F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2F9BC13B-A1DD-53E8-93D8-8759839DE98F}.Debug|x64.Build.0 = Debug|Any CPU
+		{2F9BC13B-A1DD-53E8-93D8-8759839DE98F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2F9BC13B-A1DD-53E8-93D8-8759839DE98F}.Debug|x86.Build.0 = Debug|Any CPU
+		{2F9BC13B-A1DD-53E8-93D8-8759839DE98F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F9BC13B-A1DD-53E8-93D8-8759839DE98F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F9BC13B-A1DD-53E8-93D8-8759839DE98F}.Release|x64.ActiveCfg = Release|Any CPU
+		{2F9BC13B-A1DD-53E8-93D8-8759839DE98F}.Release|x64.Build.0 = Release|Any CPU
+		{2F9BC13B-A1DD-53E8-93D8-8759839DE98F}.Release|x86.ActiveCfg = Release|Any CPU
+		{2F9BC13B-A1DD-53E8-93D8-8759839DE98F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -123,5 +137,6 @@ Global
 		{36183286-A511-4FD7-A8F2-C8BBB4CF8E28} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{A1B4DD87-F578-4947-8305-157E67E039D2} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 		{1E8AB02A-8FCC-42D7-82C7-7649729CD87E} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
+		{2F9BC13B-A1DD-53E8-93D8-8759839DE98F} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 	EndGlobalSection
 EndGlobal
