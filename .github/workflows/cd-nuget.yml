@@ -15,7 +15,8 @@ env:
 
 jobs:
   publish-nuget:
-    runs-on: ubuntu-latest
+    # runs-on: ubuntu-latest
+    runs-on: [self-hosted, i7infra-dev]
     permissions:
       contents: read
 
