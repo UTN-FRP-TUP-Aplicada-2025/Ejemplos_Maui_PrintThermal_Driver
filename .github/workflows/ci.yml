@@ -16,7 +16,7 @@ jobs:
   test:
     # runs-on: ubuntu-latest
     runs-on: [self-hosted, i7infra-dev]
-    name: 185 tests — MotorDsl.Tests
+    name: MotorDsl.Tests
 
     steps:
     - name: Checkout
@@ -60,6 +60,6 @@ jobs:
             owner: context.repo.owner,
             repo: context.repo.repo,
             body: '❌ **CI falló** — Los tests unitarios no pasaron en este PR.\n\n' +
-                  'Proyecto: `PrintThermalDriver.sln` | Target: 185 tests, 0 errores.\n\n' +
+                  'Proyecto: `PrintThermalDriver.slnx` | Target: 0 errores.\n\n' +
                   'Ver los [logs de Actions](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) para más detalles.'
           })

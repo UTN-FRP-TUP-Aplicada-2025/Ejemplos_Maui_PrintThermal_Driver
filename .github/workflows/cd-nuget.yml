@@ -1,5 +1,14 @@
 name: CD NuGet - Publish MotorDsl
 
+# Publica los 8 paquetes de la libreria.
+#
+# Por que hay dos jobs de pack y no uno solo: `dotnet pack` de un proyecto multi-TFM exige
+# compilar TODOS sus TFM. MotorDsl.Bluetooth y MotorDsl.Maui declaran net10.0-android;net10.0-ios,
+# y el workload `ios` NO EXISTE para Linux — `dotnet workload install ios` responde
+# "Workload ID ios isn't supported on this platform" y el build corta con NETSDK1178. Por eso
+# esos dos paquetes solo pueden empaquetarse en macOS, mientras que los otros seis son net10.0
+# puro y salen del runner self-hosted, que es gratis y mas rapido.
+
 on:
   push:
     tags: ['v*']
@@ -14,76 +23,183 @@ env:
   DOTNET_VERSION: '10.0.102'
 
 jobs:
-  publish-nuget:
+  # ── Version unica para los 8 paquetes ────────────────────────────────────────
+  # Se resuelve una sola vez y se propaga por outputs. Los 8 comparten numero para
+  # evitar NU1605 (downgrade de dependencia) en apps que mezclen varios.
+  version:
+    # runs-on: ubuntu-latest
+    runs-on: [self-hosted, i7infra-dev]
+    outputs:
+      package_version: ${{ steps.resolve.outputs.package_version }}
+    steps:
+      - name: Determinar versión
+        id: resolve
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="0.0.0-preview.${{ github.run_number }}"
+          fi
+          echo "package_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Versión a publicar: $VERSION"
+
+  # ── Los 6 paquetes net10.0 ───────────────────────────────────────────────────
+  pack-managed:
+    needs: version
     # runs-on: ubuntu-latest
     runs-on: [self-hosted, i7infra-dev]
     permissions:
       contents: read
+    env:
+      PACKAGE_VERSION: ${{ needs.version.outputs.package_version }}
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup .NET ${{ env.DOTNET_VERSION }}
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Determinar versión
-      run: |
-        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-          VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}"
-        elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          VERSION="${{ github.event.inputs.version }}"
-        else
-          VERSION="0.0.0-preview.${{ github.run_number }}"
-        fi
-        echo "PACKAGE_VERSION=$VERSION" >> $GITHUB_ENV
-        echo "Versión a publicar: $VERSION"
+      - name: Restore
+        run: |
+          for proj in Core Parser Rendering Extensions Printing.Abstractions Network; do
+            dotnet restore src/MotorDsl.$proj/MotorDsl.$proj.csproj
+          done
 
-    - name: Restore
-      run: |
-        for proj in Core Parser Rendering Extensions; do
-          dotnet restore src/MotorDsl.$proj/MotorDsl.$proj.csproj
-        done
+      - name: Build Release
+        run: |
+          for proj in Core Parser Rendering Extensions Printing.Abstractions Network; do
+            dotnet build src/MotorDsl.$proj/MotorDsl.$proj.csproj -c Release --no-restore
+          done
 
-    - name: Build Release (solo librerías)
-      run: |
-        for proj in Core Parser Rendering Extensions; do
-          dotnet build src/MotorDsl.$proj/MotorDsl.$proj.csproj -c Release --no-restore
-        done
+      - name: Tests
+        run: |
+          dotnet restore src/MotorDsl.Tests/MotorDsl.Tests.csproj
+          dotnet test src/MotorDsl.Tests/MotorDsl.Tests.csproj -c Release
 
-    - name: Tests
-      run: |
-        dotnet restore src/MotorDsl.Tests/MotorDsl.Tests.csproj
-        dotnet test src/MotorDsl.Tests/MotorDsl.Tests.csproj -c Release
+      - name: Pack los 6 proyectos net10.0
+        run: |
+          for proj in Core Parser Rendering Extensions Printing.Abstractions Network; do
+            dotnet pack src/MotorDsl.$proj/MotorDsl.$proj.csproj \
+              -c Release \
+              --no-build \
+              -p:PackageVersion=${{ env.PACKAGE_VERSION }} \
+              -p:PackageReleaseNotes="Release ${{ env.PACKAGE_VERSION }}" \
+              -o ./nupkg
+          done
+          ls -la ./nupkg/
 
-    - name: Pack los 4 proyectos de la librería
-      run: |
-        for proj in Core Parser Rendering Extensions; do
-          dotnet pack src/MotorDsl.$proj/MotorDsl.$proj.csproj \
-            -c Release \
-            --no-build \
-            -p:PackageVersion=${{ env.PACKAGE_VERSION }} \
-            -p:PackageReleaseNotes="Release ${{ env.PACKAGE_VERSION }}" \
-            -o ./nupkg
-        done
+      - name: Subir paquetes managed
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg-managed
+          path: ./nupkg/*.nupkg
+          retention-days: 1
 
-    - name: Listar paquetes generados
-      run: ls -la ./nupkg/
+  # ── Los 2 paquetes con TFM de plataforma ─────────────────────────────────────
+  # Requiere macOS: es la unica plataforma donde conviven los workloads ios y android.
+  pack-platform:
+    needs: version
+    runs-on: macos-15
+    permissions:
+      contents: read
+    env:
+      PACKAGE_VERSION: ${{ needs.version.outputs.package_version }}
 
-    - name: Publish to NuGet.org
-      if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-      run: |
-        dotnet nuget push ./nupkg/*.nupkg \
-          --api-key ${{ secrets.NUGET_API_KEY }} \
-          --source https://api.nuget.org/v3/index.json \
-          --skip-duplicate
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Upload nupkg artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: nuget-packages-${{ env.PACKAGE_VERSION }}
-        path: ./nupkg/*.nupkg
-        retention-days: 30
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Instalar workloads de plataforma
+        run: dotnet workload install ios android maui-android
+
+      - name: Restore
+        run: |
+          for proj in Bluetooth Maui; do
+            dotnet restore src/MotorDsl.$proj/MotorDsl.$proj.csproj
+          done
+
+      - name: Build Release
+        run: |
+          for proj in Bluetooth Maui; do
+            dotnet build src/MotorDsl.$proj/MotorDsl.$proj.csproj -c Release --no-restore
+          done
+
+      - name: Pack los 2 proyectos multi-TFM
+        run: |
+          for proj in Bluetooth Maui; do
+            dotnet pack src/MotorDsl.$proj/MotorDsl.$proj.csproj \
+              -c Release \
+              --no-build \
+              -p:PackageVersion=${{ env.PACKAGE_VERSION }} \
+              -p:PackageReleaseNotes="Release ${{ env.PACKAGE_VERSION }}" \
+              -o ./nupkg
+          done
+          ls -la ./nupkg/
+
+      - name: Subir paquetes de plataforma
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg-platform
+          path: ./nupkg/*.nupkg
+          retention-days: 1
+
+  # ── Publicacion ──────────────────────────────────────────────────────────────
+  publish:
+    needs: [version, pack-managed, pack-platform]
+    # runs-on: ubuntu-latest
+    runs-on: [self-hosted, i7infra-dev]
+    permissions:
+      contents: read
+    env:
+      PACKAGE_VERSION: ${{ needs.version.outputs.package_version }}
+
+    steps:
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Bajar los paquetes de ambos jobs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nupkg-*
+          merge-multiple: true
+          path: ./nupkg
+
+      - name: Verificar que estén los 8
+        run: |
+          ls -la ./nupkg/
+          COUNT=$(ls -1 ./nupkg/*.nupkg | wc -l)
+          if [ "$COUNT" -ne 8 ]; then
+            echo "::error::Se esperaban 8 paquetes y hay $COUNT. No se publica un conjunto incompleto."
+            exit 1
+          fi
+
+      - name: Publish to NuGet.org
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        run: |
+          # Orden de dependencias: Printing.Abstractions primero, los consumidores despues.
+          for proj in Printing.Abstractions Core Parser Rendering Extensions Network Bluetooth Maui; do
+            dotnet nuget push "./nupkg/MotorDsl.$proj.${{ env.PACKAGE_VERSION }}.nupkg" \
+              --api-key ${{ secrets.NUGET_API_KEY }} \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          done
+
+      - name: Upload nupkg artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages-${{ env.PACKAGE_VERSION }}
+          path: ./nupkg/*.nupkg
+          retention-days: 30
