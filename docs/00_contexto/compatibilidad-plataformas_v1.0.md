@@ -6,7 +6,7 @@
 **Estado:** Histórico
 **Fecha:** 2026-03-30
 
-> **⚠️ Documento histórico — versión 1.0.** Para la versión actual con los nuevos paquetes (`MotorDsl.Printing.Abstractions`, `MotorDsl.Bluetooth`, `MotorDsl.Maui`) ver [compatibilidad-plataformas_v1.1.md](./compatibilidad-plataformas_v1.1.md).
+> **⚠️ Documento histórico — versión 1.0.** Para la versión actual con los nuevos paquetes (`MotorDsl.Printing.Abstractions`, `MotorDsl.Bluetooth`, `MotorDsl.Maui`) ver [compatibilidad-plataformas_v1.2.md](./compatibilidad-plataformas_v1.2.md).
 
 ---
 
