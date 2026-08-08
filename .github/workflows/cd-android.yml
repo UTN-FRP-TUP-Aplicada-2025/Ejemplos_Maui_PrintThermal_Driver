@@ -45,8 +45,12 @@ jobs:
     - name: Install MAUI Android workload
       run: dotnet workload install maui-android --version ${{ env.DOTNET_VERSION_WORKLOAD }}
 
+    # Sin -f: en `dotnet restore` esa opcion es --force, no --framework, asi que
+    # "net10.0-android" quedaba como un segundo proyecto posicional y MSBuild cortaba con
+    # MSB1008 "Only one project can be specified". El restore evalua todos los TFM del
+    # proyecto, que en Linux ahora es solo net10.0-android por la condicion de los .csproj.
     - name: Restore
-      run: dotnet restore ${{ matrix.app.path }} -f net10.0-android
+      run: dotnet restore ${{ matrix.app.path }}
 
     # RuntimeIdentifier explicito: los samples declaran <RuntimeIdentifiers> en plural y, sin
     # elegir uno, el publish resuelve el RID del HOST y busca
