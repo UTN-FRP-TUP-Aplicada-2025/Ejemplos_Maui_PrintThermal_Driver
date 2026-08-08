@@ -18,6 +18,7 @@
 		<ProjectReference Include="..\MotorDsl.Parser\MotorDsl.Parser.csproj" />
 		<ProjectReference Include="..\MotorDsl.Rendering\MotorDsl.Rendering.csproj" />
 		<ProjectReference Include="..\MotorDsl.Printing.Abstractions\MotorDsl.Printing.Abstractions.csproj" />
+		<ProjectReference Include="..\MotorDsl.Network\MotorDsl.Network.csproj" />
 	</ItemGroup>
 
 	<!--

@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+
+		<RootNamespace>MotorDsl.Network</RootNamespace>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<!--
+		TFM net10.0 PURO, a proposito. No lleva sufijo de plataforma porque no usa una sola API
+		nativa: System.Net.Sockets es BCL. Un paquete net10.0 es consumible desde net10.0-android,
+		net10.0-ios y net10.0-windows por herencia de TFM, asi que este transport habilita
+		impresion en iOS sin que ninguna maquina Apple participe de su build. Ademas queda
+		referenciable directamente desde MotorDsl.Tests (net10.0), sin el enlace por fuente que
+		necesita MotorDsl.Bluetooth.
+		-->
+
+		<PackageId>MotorDsl.Network</PackageId>
+		<Authors>Fernando Rafael Filipuzzi</Authors>
+		<Description>Transport de impresion por red TCP (puerto 9100 / RAW / JetDirect) para MotorDsl. Multiplataforma: Android, iOS y escritorio.</Description>
+		<PackageTags>maui;thermal;escpos;dsl;printing;network;tcp</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<RepositoryUrl>https://github.com/Aplicada-Streaming/PrintThermal_Motor_Maui</RepositoryUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\MotorDsl.Printing.Abstractions\MotorDsl.Printing.Abstractions.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
+	</ItemGroup>
+
+</Project>
