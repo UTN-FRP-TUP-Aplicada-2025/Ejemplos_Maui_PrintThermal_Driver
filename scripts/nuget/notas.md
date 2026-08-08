@@ -1,5 +1,33 @@
 # Publicacion de paquetes MotorDsl en nuget.org
 
+## Que usar segun el caso
+
+| Quiero… | Herramienta | Donde corre |
+|---|---|---|
+| **Publicar los 8 paquetes** | `tag-next-version.sh` -> dispara `cd-nuget.yml` | Linux, sin SDK |
+| Publicar sin pasar por CI | `publish-motordsl-nuget.bat` | **Solo Windows o macOS** |
+| Solo compilar, sin publicar | `build-motordsl-nuget.bat` | Solo Windows o macOS |
+
+**Por que el `.bat` no se porto a `.sh`.** `dotnet pack` de un proyecto multi-TFM exige
+compilar todos sus TFM, y el workload `ios` no existe para Linux: `dotnet workload install ios`
+responde *"Workload ID ios isn't supported on this platform"* y el build corta con `NETSDK1178`.
+Un port a `.sh` solo podria empaquetar 6 de 8 — quedarian afuera `MotorDsl.Bluetooth` y
+`MotorDsl.Maui` —, o sea que seria estrictamente peor que el `.bat`. La ruta completa desde
+Linux es el workflow, que reparte el pack entre el runner Linux y uno macOS.
+
+**Que aporta `tag-next-version.sh`.** Lo unico que `cd-nuget.yml` no hace: elegir el numero de
+version. Calcula la version unificada consultando nuget.org, verifica que el tag no exista ya
+—las versiones publicadas son inmutables— y lo crea. No necesita el SDK: solo `curl`, `python3`
+y `git`.
+
+```bash
+./scripts/nuget/tag-next-version.sh --dry-run    # ver que version saldria
+./scripts/nuget/tag-next-version.sh              # calcular, confirmar y pushear el tag
+./scripts/nuget/tag-next-version.sh 1.0.14       # forzar una version concreta
+```
+
+---
+
 Script: `publish-motordsl-nuget.bat`
 
 ## Que hace
