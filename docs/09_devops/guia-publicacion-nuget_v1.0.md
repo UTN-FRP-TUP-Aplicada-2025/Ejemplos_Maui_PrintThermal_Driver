@@ -62,13 +62,13 @@ Existen dos enfoques principales para publicar una librería compuesta por vario
 
 | Opción | Paquetes publicados | El consumidor instala | Complejidad |
 |---|---|---|---|
-| **A) Granular (7 paquetes)** (actual) | `Core`, `Parser`, `Rendering`, `Extensions`, `Printing.Abstractions`, `Bluetooth`, `Maui` | `MotorDsl.Extensions` (motor core) o `MotorDsl.Maui` + `MotorDsl.Bluetooth` (apps MAUI) | Alta — versiones sincronizadas |
+| **A) Granular (8 paquetes)** (actual) | `Core`, `Parser`, `Rendering`, `Extensions`, `Printing.Abstractions`, `Network`, `Bluetooth`, `Maui` | `MotorDsl.Extensions` (motor core) o `MotorDsl.Maui` + `MotorDsl.Bluetooth` (apps MAUI) | Alta — versiones sincronizadas |
 | **B) 1 paquete** | `MotorDsl` (todo junto) | `MotorDsl` | Baja — 1 versión, 1 artefacto |
 | **C) 2 paquetes** | `MotorDsl.Core` (contratos) + `MotorDsl` (todo) | `MotorDsl` | Media — separación contratos/implementación |
 
 ### 2.5 Decisión adoptada
 
-Se adopta el **enfoque granular (7 paquetes)**. El punto de entrada depende del escenario de consumo:
+Se adopta el **enfoque granular (8 paquetes)**. El punto de entrada depende del escenario de consumo:
 
 - **Motor core** (consola, API, Worker, etc.): instalar `MotorDsl.Extensions`, que trae transitivamente `Core`, `Parser` y `Rendering`, y expone `AddMotorDslEngine()`.
 - **Apps MAUI** (impresión térmica Bluetooth + renderers PDF/bitmap/preview): instalar además `MotorDsl.Maui` y `MotorDsl.Bluetooth`. El punto de entrada es `AddMotorDslMaui()` (extiende `MotorDslBuilder`) y `AddBluetoothPrinterTransport()`. `MotorDsl.Maui` arrastra transitivamente `MotorDsl.Printing.Abstractions`.
@@ -102,7 +102,7 @@ Se adopta el **enfoque granular (7 paquetes)**. El punto de entrada depende del 
 
 ### 3.2 Tabla de paquetes
 
-Se publican **7 paquetes** NuGet:
+Se publican **8 paquetes** NuGet:
 
 | Paquete | Contenido | Dependencias NuGet | Dependencias internas |
 |---|---|---|---|
@@ -111,10 +111,12 @@ Se publican **7 paquetes** NuGet:
 | `MotorDsl.Rendering` | `EscPosRenderer`, `TextRenderer` | — | → Core |
 | `MotorDsl.Extensions` | DI, fluent API `AddMotorDslEngine()` | `Microsoft.Extensions.DependencyInjection.Abstractions` | → Core, Parser, Rendering |
 | `MotorDsl.Printing.Abstractions` | Contratos de impresión (`IThermalPrinterService`, `IThermalPrinterTransport`, `IDiagnosticsReportProvider`), `AddMotorDslPrinting()` | `Microsoft.Extensions.DependencyInjection.Abstractions` | → Core |
+| `MotorDsl.Network` | Transport de red TCP 9100 (RAW/JetDirect), multiplataforma, `AddNetworkPrinterTransport()` | `Microsoft.Extensions.DependencyInjection.Abstractions` | → Printing.Abstractions |
 | `MotorDsl.Bluetooth` | Transport Bluetooth Classic SPP (Android; iOS lanza `PlatformNotSupportedException`), `AddBluetoothPrinterTransport()` | `Microsoft.Extensions.DependencyInjection.Abstractions` | → Printing.Abstractions |
 | `MotorDsl.Maui` | Controles MAUI y renderers (PDF, ESC/POS bitmap, SkiaSharp), `AddMotorDslMaui()` | `SkiaSharp.Views.Maui.Controls`, `PdfSharpCore`, `QRCoder` | → Core, Rendering, Extensions, Printing.Abstractions |
 
 > `MotorDsl.Bluetooth` y `MotorDsl.Maui` multi-targetan `net10.0-android;net10.0-ios`; los demás son `net10.0`.
+> Esa diferencia decide dónde se pueden empaquetar: los `net10.0` en cualquier plataforma, esos dos **solo en macOS o Windows**, porque el workload `ios` no existe para Linux.
 
 ### 3.3 ¿Qué instala el consumidor?
 
@@ -187,6 +189,7 @@ La versión NO se fija en el `.csproj`: se inyecta en build/pack vía `/p:Versio
 | Rendering | `MotorDsl.Rendering` | Renderers: EscPosRenderer, TextRenderer |
 | Extensions | `MotorDsl.Extensions` | Integración con DI y fluent API para el Motor DSL de impresión térmica |
 | Printing.Abstractions | `MotorDsl.Printing.Abstractions` | Contratos de impresión térmica e inyección de dependencias |
+| Network | `MotorDsl.Network` | Transport de impresión por red TCP (puerto 9100 / RAW / JetDirect) para MotorDsl. Multiplataforma: Android, iOS y escritorio |
 | Bluetooth | `MotorDsl.Bluetooth` | Transport Bluetooth Classic SPP (Android). iOS no soportado (lanza `PlatformNotSupportedException`) |
 | Maui | `MotorDsl.Maui` | Controles MAUI y renderers (PDF, ESC/POS bitmap, SkiaSharp) para MotorDsl |
 
@@ -196,9 +199,9 @@ La versión NO se fija en el `.csproj`: se inyecta en build/pack vía `/p:Versio
 
 ### 6.1 Publicación local con el script canónico
 
-El flujo completo de publicación está automatizado en `scripts/nuget/publish-motordsl-nuget.bat`, que empaqueta y publica los **7 paquetes**. Sus pasos: resuelve la API key (`MOTORDSL_NUGET_API_KEY` o prompt), calcula la versión unificada (auto-bump de patch), hace restore + build Release, corre `dotnet test`, empaqueta con `dotnet pack` y hace `dotnet nuget push` a nuget.org con `--skip-duplicate`, y crea/pushea el tag git `v<version>`.
+El flujo completo de publicación está automatizado en `scripts/nuget/publish-motordsl-nuget.bat`, que empaqueta y publica los **8 paquetes**. Sus pasos: resuelve la API key (`MOTORDSL_NUGET_API_KEY` o prompt), calcula la versión unificada (auto-bump de patch), hace restore + build Release, corre `dotnet test`, empaqueta con `dotnet pack` y hace `dotnet nuget push` a nuget.org con `--skip-duplicate`, y crea/pushea el tag git `v<version>`.
 
-Para una prueba manual de empaquetado de los 7 proyectos:
+Para una prueba manual de empaquetado de los 8 proyectos:
 
 ```bash
 # Desde la raíz del repositorio

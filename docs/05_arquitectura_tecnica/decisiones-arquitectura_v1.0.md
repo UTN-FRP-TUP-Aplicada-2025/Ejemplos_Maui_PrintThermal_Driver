@@ -107,7 +107,7 @@ El EvaluatedDocument se considera una representación derivada:
 
 ### 2. Estructura de proyectos
 
-Se define separación por capas (7 paquetes):
+Se define separación por capas (8 paquetes):
 
 * MotorDsl.Core → modelos, AST, interfaces, evaluador (namespace `MotorDsl.Core.Evaluators`), layout y validadores
 * MotorDsl.Parser → parsing DSL

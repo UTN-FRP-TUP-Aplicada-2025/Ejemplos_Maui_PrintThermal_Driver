@@ -37,7 +37,7 @@ La librería core del Motor DSL es **multiplataforma** y funciona en cualquier
 entorno compatible con .NET 10. Sin embargo, la conectividad Bluetooth Classic
 SPP para impresoras térmicas ESC/POS solo está disponible en **Android**.
 
-Este documento detalla la compatibilidad de cada uno de los 7 paquetes por
+Este documento detalla la compatibilidad de cada uno de los 8 paquetes por
 plataforma, explica las limitaciones técnicas de iOS y describe las alternativas
 disponibles para soporte multiplataforma.
 

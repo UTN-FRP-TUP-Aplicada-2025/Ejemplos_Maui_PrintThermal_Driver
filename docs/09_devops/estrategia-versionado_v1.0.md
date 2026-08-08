@@ -10,7 +10,7 @@
 
 ## 1. Propósito
 
-Este documento define la estrategia de versionado de los paquetes NuGet del Motor DSL: el esquema de versiones adoptado, cómo se calcula e inyecta la versión en build/pack, la unificación de versión entre los 7 paquetes y las reglas de etiquetado en git. El objetivo es garantizar trazabilidad, inmutabilidad y consistencia entre los componentes publicados.
+Este documento define la estrategia de versionado de los paquetes NuGet del Motor DSL: el esquema de versiones adoptado, cómo se calcula e inyecta la versión en build/pack, la unificación de versión entre los 8 paquetes y las reglas de etiquetado en git. El objetivo es garantizar trazabilidad, inmutabilidad y consistencia entre los componentes publicados.
 
 ---
 
@@ -33,7 +33,7 @@ MAJOR.MINOR.PATCH
 
 ## 3. La versión NO se fija en los `.csproj`
 
-Ninguno de los 7 proyectos empaquetables declara `<Version>` en su `.csproj`. La versión se **inyecta en tiempo de build/pack** mediante propiedades MSBuild:
+Ninguno de los 8 proyectos empaquetables declara `<Version>` en su `.csproj`. La versión se **inyecta en tiempo de build/pack** mediante propiedades MSBuild:
 
 - `/p:Version=<version>`
 - `-p:PackageVersion=<version>`
@@ -58,15 +58,15 @@ param($PackageName, $Fallback = "1.0.0")
 
 ---
 
-## 5. Versión unificada entre los 7 paquetes
+## 5. Versión unificada entre los 8 paquetes
 
-Los 7 paquetes (`MotorDsl.Core`, `MotorDsl.Parser`, `MotorDsl.Rendering`, `MotorDsl.Extensions`, `MotorDsl.Printing.Abstractions`, `MotorDsl.Bluetooth`, `MotorDsl.Maui`) tienen dependencias internas entre sí. Para evitar el error de downgrade **`NU1605`** por dependencias transitivas con versiones distintas, el pipeline de publicación:
+Los 8 paquetes (`MotorDsl.Core`, `MotorDsl.Parser`, `MotorDsl.Rendering`, `MotorDsl.Extensions`, `MotorDsl.Printing.Abstractions`, `MotorDsl.Network`, `MotorDsl.Bluetooth`, `MotorDsl.Maui`) tienen dependencias internas entre sí. Para evitar el error de downgrade **`NU1605`** por dependencias transitivas con versiones distintas, el pipeline de publicación:
 
 1. Calcula la próxima versión de cada paquete con `get-next-version.ps1`.
-2. Toma la **versión unificada = `max(next(patch))`** de los 7 paquetes.
+2. Toma la **versión unificada = `max(next(patch))`** de los 8 paquetes.
 3. Inyecta ese mismo número en TODOS los paquetes vía `/p:Version` y `/p:MotorDslVersion`.
 
-De este modo, una publicación siempre libera los 7 paquetes con la misma versión.
+De este modo, una publicación siempre libera los 8 paquetes con la misma versión.
 
 ---
 
