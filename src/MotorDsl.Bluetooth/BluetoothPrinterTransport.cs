@@ -262,13 +262,17 @@ public partial class BluetoothPrinterTransport : IThermalPrinterTransport
         // un piso minimo de 1ms. Nada de delays gigantes derivados del tamano del buffer.
         int fallbackDelayMs = Math.Max(profile.ByteDelayMs, 1);
 
-        // Flow control por status SOLO si la impresora reporto feedback en la deteccion (fase 2).
-        // LIMITE HONESTO: DLE EOT da liveness/papel/error en tiempo real, NO bytes libres del
-        // buffer. No es flow control perfecto: gatea bloques por online/listo, detecta caidas
-        // antes de escribir a ciegas y falla claro ante papel/tapa. Donde no hay feedback (o si
-        // el status se vuelve ilegible) degrada al pacing fijo de fase 1, sin abortar.
-        bool statusGating = Capabilities?.StatusFeedback == CapabilitySupport.Supported;
-        bool degradedPacing = false;
+        // El control de flujo real es el de RFCOMM (creditos): WriteAsync se bloquea cuando la
+        // impresora deja de otorgarlos. Ese bloqueo se OBSERVA con WriteTimeout (abajo); el pacing
+        // fijo queda como red de seguridad para las impresoras que no aplican contrapresion.
+        //
+        // NO se intercala ningun sondeo DLE EOT entre bloques. Los comandos DLE son de tiempo real
+        // y hay firmwares que los responden PERO ademas los consumen como datos: intercalarlos en
+        // medio de la carga util de un GS v 0 desincroniza el raster y destruye la imagen. Ver
+        // 13-Impresion-Logo en la documentacion. El estado de papel/tapa se consulta UNA vez antes
+        // del envio, que es el unico momento en que no hay carga util en vuelo; si una escritura se
+        // cuelga, la causa la nombra este mismo chequeo al principio del siguiente intento.
+        bool hayStatus = Capabilities?.StatusFeedback == CapabilitySupport.Supported;
 
         try
         {
@@ -276,35 +280,25 @@ public partial class BluetoothPrinterTransport : IThermalPrinterTransport
             // PrinterHardwareException (clasificada como Hardware -> el handler NO reintenta).
             // Va dentro del try: una IOException aca invalida+reconecta como en fase 1; la
             // PrinterHardwareException no es IOException, asi que sube limpia sin invalidar.
-            if (statusGating)
+            if (hayStatus)
                 await CheckHardwareFastFailAsync(ct);
 
             await Task.Delay(profile.InitDelayMs, ct);
 
-            int chunkIndex = 0;
             foreach (var bloque in ChunkBuffer(data, CHUNK_SIZE))
             {
-                bool applyFixedPacing = true;
-
-                if (statusGating && (chunkIndex % POLL_EVERY_N_CHUNKS == 0))
-                {
-                    // Una vez degradado no se vuelve a consultar el status en ESTE envio.
-                    PrinterStatus outcome = degradedPacing
-                        ? PrinterStatus.Unknown
-                        : await WaitUntilReadyAsync(ct);
-                    (degradedPacing, applyFixedPacing) = NextPacingDecision(degradedPacing, outcome);
-                }
-
-                await _outputStream!.WriteAsync(bloque.Array!, bloque.Offset, bloque.Count, ct);
-                await _outputStream.FlushAsync(ct);
-
-                if (applyFixedPacing)
-                    await Task.Delay(fallbackDelayMs, ct);
-
-                chunkIndex++;
+                await EscribirBloqueAsync(bloque, profile, ct);
+                await Task.Delay(fallbackDelayMs, ct);
             }
 
             await Task.Delay(profile.FinalDelayMs, ct);
+        }
+        catch (TimeoutException)
+        {
+            // La impresora dejo de drenar y el write quedo colgado. Cerrar el socket es ademas lo
+            // que libera el hilo que quedo dentro del write bloqueante.
+            InvalidateConnection();
+            throw;
         }
         catch (System.IO.IOException)
         {
@@ -326,6 +320,54 @@ public partial class BluetoothPrinterTransport : IThermalPrinterTransport
         await Task.CompletedTask;
 #endif
     }
+
+#if ANDROID
+    /// <summary>
+    /// Escribe un bloque acotado por <see cref="PrinterProfile.WriteTimeoutMs"/>.
+    /// <para>
+    /// El write de un <c>OutputStream</c> de Java es bloqueante y no atiende el
+    /// <see cref="CancellationToken"/>: cuando la impresora deja de otorgar creditos RFCOMM, el
+    /// hilo queda dentro del write. Por eso se corre en un <see cref="Task"/> y se compite contra
+    /// un delay; si gana el delay, el bloqueo se convierte en un fallo acotado y diagnosticable en
+    /// vez de un cuelgue mudo. El hilo bloqueado se libera al cerrar el socket, que es lo que hace
+    /// el <c>InvalidateConnection()</c> del llamador.
+    /// </para>
+    /// <para>
+    /// <b>Al vencer NO se sondea la causa por este mismo stream.</b> Dos motivos: si no hay
+    /// creditos, el sondeo se bloquearia igual que la escritura; y peor, si el write pendiente se
+    /// destraba despues, los bytes del sondeo quedarian intercalados en medio de la carga util —
+    /// exactamente el defecto que este cambio elimina. Se lanza <see cref="TimeoutException"/>, el
+    /// llamador invalida la conexion, y la causa la nombra <see cref="CheckHardwareFastFailAsync"/>
+    /// al principio del siguiente intento, ya sobre una conexion nueva y limpia.
+    /// </para>
+    /// </summary>
+    private async Task EscribirBloqueAsync(
+        ArraySegment<byte> bloque, PrinterProfile profile, CancellationToken ct)
+    {
+        var output = _outputStream ?? throw new InvalidOperationException("No hay una impresora conectada");
+        int timeout = Math.Max(profile.WriteTimeoutMs, 1000);
+
+        var escritura = Task.Run(() =>
+        {
+            output.Write(bloque.Array!, bloque.Offset, bloque.Count);
+            output.Flush();
+        }, CancellationToken.None);
+
+        var vencido = await Task.WhenAny(escritura, Task.Delay(timeout, ct)).ConfigureAwait(false);
+
+        if (vencido == escritura)
+        {
+            await escritura.ConfigureAwait(false); // propaga IOException si la hubo
+            return;
+        }
+
+        ct.ThrowIfCancellationRequested();
+
+        // La escritura sigue bloqueada: la impresora no esta drenando. No se toca mas este stream.
+        throw new TimeoutException(
+            $"La impresora dejo de aceptar datos: {bloque.Count} bytes no salieron en {timeout} ms.");
+    }
+#endif
 
 #if ANDROID
     /// <summary>

@@ -60,24 +60,6 @@ public partial class BluetoothPrinterTransport
     }
 
     /// <summary>
-    /// Decide, para un bloque, si aplicar el pacing fijo de fase 1 y si quedar degradado, dado el
-    /// estado previo de degradacion y el resultado del status de ese bloque. Una vez degradado
-    /// (un Unknown), se queda degradado por el resto del envio. Pura para poder testear el latch.
-    /// </summary>
-    internal static (bool degraded, bool fixedPacing) NextPacingDecision(bool degraded, PrinterStatus outcome)
-    {
-        if (degraded)
-            return (true, true); // ya degradado: pacing fijo para todo lo que resta
-
-        return outcome switch
-        {
-            PrinterStatus.Ready => (false, false), // listo: escribir ya, sin pacing fijo
-            PrinterStatus.Busy => (false, true),   // sigue ocupada: escribir igual con pacing de respaldo
-            _ => (true, true)                      // Unknown: degradar desde este bloque en adelante
-        };
-    }
-
-    /// <summary>
     /// Parsea el header fijo de un comando GS v 0 (0x1D 0x76 0x30 m xL xH yL yH [bits]) y extrae
     /// (widthBytes, heightDots, bits). Formato fijo: parseo trivial. Devuelve null si el header
     /// no matchea o no hay suficientes bytes de datos. Pura y testeable.
