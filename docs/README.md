@@ -2,7 +2,7 @@
 
 Sistema de generación y procesamiento de documentos basado en un motor DSL (Domain Specific Language), diseñado para interpretar plantillas JSON, evaluar bindings y renderizar salidas estructuradas con foco en **impresión térmica ESC/POS por Bluetooth** desde aplicaciones **.NET MAUI**.
 
-Construido con **.NET 10**, orientado a arquitectura extensible (renderers `IRenderer` y transports `IThermalPrinterTransport`), versionado semántico y ejecución determinística. Se distribuye en **7 paquetes NuGet** (`MotorDsl.Core`, `Parser`, `Rendering`, `Extensions`, `Printing.Abstractions`, `Bluetooth`, `Maui`).
+Construido con **.NET 10**, orientado a arquitectura extensible (renderers `IRenderer` y transports `IThermalPrinterTransport`), versionado semántico y ejecución determinística. Se distribuye en **8 paquetes NuGet** (`MotorDsl.Core`, `Parser`, `Rendering`, `Extensions`, `Printing.Abstractions`, `Network`, `Bluetooth`, `Maui`).
 
 ---
 

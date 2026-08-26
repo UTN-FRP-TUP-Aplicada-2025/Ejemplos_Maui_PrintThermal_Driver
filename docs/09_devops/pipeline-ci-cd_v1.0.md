@@ -114,17 +114,18 @@ v1.2.0
 
 **Objetivo:** compilar las librerías del motor.
 
-El conjunto real de librerías publicables son **7 paquetes**:
+El conjunto real de librerías publicables son **8 paquetes**:
 
 * MotorDsl.Core
 * MotorDsl.Parser
 * MotorDsl.Rendering
 * MotorDsl.Extensions
 * MotorDsl.Printing.Abstractions
+* MotorDsl.Network
 * MotorDsl.Bluetooth
 * MotorDsl.Maui
 
-> El workflow `cd-nuget.yml` compila/publica las 4 librerías core (Core, Parser, Rendering, Extensions), mientras que el script de publicación canónico `scripts/nuget/publish-motordsl-nuget.bat` empaqueta y publica los 7 paquetes completos.
+> El workflow `cd-nuget.yml` publica los **8** paquetes repartiendo el `pack` en dos runners: los 6 `net10.0` en el self-hosted y `MotorDsl.Bluetooth` / `MotorDsl.Maui` en `macos-15`. La separación es estructural: `dotnet pack` de un proyecto multi-TFM exige compilar todos sus TFM y el workload `ios` no existe para Linux. Antes publicaba solo las 4 librerías core y el resto dependía del script local `scripts/nuget/publish-motordsl-nuget.bat`.
 
 **Criterio de éxito**
 
@@ -351,7 +352,7 @@ publish:
 Implementado en v1.0 (actualización):
 
 - ✅ Publicación automática en NuGet.org (cd-nuget.yml con NUGET_API_KEY)
-- ✅ Conjunto de 7 paquetes: MotorDsl.Core, Parser, Rendering, Extensions, Printing.Abstractions, Bluetooth, Maui (publicados por `publish-motordsl-nuget.bat` con versión unificada)
+- ✅ Conjunto de 8 paquetes: MotorDsl.Core, Parser, Rendering, Extensions, Printing.Abstractions, Network, Bluetooth, Maui (publicados por `cd-nuget.yml` o por `publish-motordsl-nuget.bat`, con versión unificada)
 - ✅ Soporte iOS: cd-ios-sampleapp.yml, cd-ios-multaapp.yml y cd-ios-multaapp.nuget.yml
 - ✅ Samples de integración NuGet: MotorDsl.Nuget.MultaApp y MotorDsl.Nuget.Integrated.MultaApp
 

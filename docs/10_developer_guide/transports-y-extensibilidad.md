@@ -1,8 +1,22 @@
 # Transports y Extensibilidad
 
-Guía técnica para implementar un `IThermalPrinterTransport` propio (USB, WiFi,
-BLE, MFi, etc.). Toma como referencia la implementación oficial
-`BluetoothPrinterTransport` del paquete `MotorDsl.Bluetooth`.
+Guía técnica para implementar un `IThermalPrinterTransport` propio (USB, BLE,
+MFi, etc.). Toma como referencia las dos implementaciones oficiales:
+`BluetoothPrinterTransport` (`MotorDsl.Bluetooth`) y `NetworkPrinterTransport`
+(`MotorDsl.Network`).
+
+> **Antes de escribir uno propio, revisá si ya existe.** El proyecto publica dos
+> transports:
+>
+> | Paquete | `Kind` | Medio | Plataformas |
+> |---|---|---|---|
+> | `MotorDsl.Bluetooth` | `bluetooth` | Bluetooth Classic SPP | Solo Android |
+> | `MotorDsl.Network` | `network` | Socket TCP al puerto 9100 | Android, iOS y escritorio |
+>
+> El ejemplo `WiFiPrinterTransport` que desarrolla esta guía **ya está implementado
+> y publicado** como `MotorDsl.Network`. Se conserva porque sigue siendo el mejor
+> recorrido didáctico de punta a punta para escribir un transport, pero si lo que
+> necesitás es imprimir por red, usá el paquete en vez de copiarlo.
 
 ---
 
@@ -85,6 +99,14 @@ public interface IThermalPrinterTransport
 ---
 
 ## 3. Ejemplo paso a paso — `WiFiPrinterTransport`
+
+> **Nota.** Este ejemplo es didáctico. La versión publicada y probada vive en
+> `src/MotorDsl.Network/` y difiere en dos puntos que conviene tener presentes al
+> copiar código de acá: `NetworkPrinterTransport` **no barre la subred** —recibe
+> los endpoints por configuración, porque probar el puerto 9100 host por host es
+> lento y se parece a un escaneo de puertos— y **relanza `IOException` y
+> `SocketException` sin envolver**, que es lo que hace que la política de retry
+> las clasifique como `Connection`.
 
 Implementación de un transport TCP socket para impresoras térmicas con
 conector de red (Epson TM-T20III, Star TSP100, etc.). Las impresoras de red
@@ -240,7 +262,25 @@ builder.Services.AddSingleton<IThermalPrinterTransport, WiFiPrinterTransport>();
 
 Con esto, una sola llamada a `printer.DiscoverDevicesAsync()` devuelve dispositivos de **ambos**. El servicio elige el transport correcto al conectarse según `device.Kind`.
 
-### 4.3 Compilación condicional por plataforma
+### 4.3 Registro de los transports oficiales
+
+```csharp
+// Bluetooth Classic SPP: solo tiene sentido en Android. En iOS el transport
+// existe como TFM pero lanza PlatformNotSupportedException en toda operación.
+#if ANDROID
+builder.Services.AddBluetoothPrinterTransport();     // Kind = "bluetooth"
+#endif
+
+// Red TCP: funciona en Android, iOS y escritorio.
+builder.Services.AddNetworkPrinterTransport(o => o
+    .AddPrinter("192.168.1.50")            // puerto 9100 por defecto
+    .AddPrinter("192.168.1.51:9101"));     // Kind = "network"
+```
+
+Los dos conviven sin conflicto: `ThermalPrinterService` recibe
+`IEnumerable<IThermalPrinterTransport>` y rutea por `PrinterDevice.Kind`.
+
+### 4.4 Compilación condicional por plataforma
 
 ```csharp
 #if ANDROID
@@ -252,7 +292,7 @@ Con esto, una sola llamada a `printer.DiscoverDevicesAsync()` devuelve dispositi
 #endif
 ```
 
-### 4.4 Patrón fluent (recomendado para reuso)
+### 4.5 Patrón fluent (recomendado para reuso)
 
 Si planeás distribuir el transport como librería, expone una extensión:
 

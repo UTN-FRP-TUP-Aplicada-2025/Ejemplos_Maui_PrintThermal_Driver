@@ -1,7 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
+		<!--
+		El TFM de iOS se declara SOLO donde se puede compilar. En Linux el workload `ios` no
+		existe ("Workload ID ios isn't supported on this platform"), y `dotnet restore` evalua
+		todos los TFM del proyecto aunque se pase `-f net10.0-android`: el -f filtra el BUILD,
+		no el RESTORE. Sin esta condicion, cualquier build de Android en Linux (incluido el
+		workflow cd-android sobre el runner self-hosted) corta con NETSDK1178.
+
+		OJO: este patron vale para APPS, no para las librerias. Aplicarlo a MotorDsl.Bluetooth o
+		MotorDsl.Maui haria que empaquetar en Linux produjera en silencio un .nupkg SIN el asset
+		de iOS. Esos dos deben seguir exigiendo macOS (job pack-platform de cd-nuget.yml).
+		-->
+		<TargetFrameworks>net10.0-android</TargetFrameworks>
+		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows')) or $([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net10.0-ios</TargetFrameworks>
 
 		<OutputType>Exe</OutputType>
 

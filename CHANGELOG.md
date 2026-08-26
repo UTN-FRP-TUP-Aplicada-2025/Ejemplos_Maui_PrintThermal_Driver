@@ -8,6 +8,7 @@ versión de los paquetes se inyecta en build/pack vía `-p:PackageVersion` /
 `-p:MotorDslVersion` (ver `docs/09_devops/estrategia-versionado_v1.0.md`), por lo
 que el número de versión **no** vive en los `.csproj`.
 
+
 ## [1.0.15] - 2026-08-26
 
 ### Corregido
@@ -54,6 +55,44 @@ que el número de versión **no** vive en los `.csproj`.
 > **Verificación**: el cambio vive íntegramente bajo `#if ANDROID` y
 > `MotorDsl.Tests` no referencia `MotorDsl.Bluetooth`, por lo que **no tiene
 > cobertura de tests unitarios**: se valida en dispositivo físico.
+
+
+- **`MotorDsl.Network`**: octavo paquete, transport de impresión por socket TCP al
+  puerto 9100 (RAW / JetDirect). **Habilita impresión térmica en iOS**, que hasta
+  ahora era imposible porque el único transport disponible era Bluetooth Classic
+  SPP y Apple no expone ese perfil a apps de terceros.
+
+  El paquete targetea **`net10.0` puro**. No usa ninguna API de plataforma
+  —`System.Net.Sockets` es BCL—, así que es consumible desde `net10.0-android` y
+  `net10.0-ios` por herencia de TFM, se compila y empaqueta en cualquier sistema
+  operativo, y `MotorDsl.Tests` lo referencia directamente sin el enlace por
+  `<Compile Include>` que necesita `MotorDsl.Bluetooth`.
+
+  Se registra con `AddNetworkPrinterTransport()` y expone `Kind = "network"`, de
+  modo que convive con el transport Bluetooth: el servicio rutea por `Kind`.
+- **`TransportChunking`** en `MotorDsl.Printing.Abstractions`: helper público con
+  el chunker de tamaño fijo, para que cualquier transport lo reutilice.
+- **Devcontainer** (`.devcontainer/`) para desarrollar en Linux sin instalar el SDK
+  en la máquina anfitriona. Cubre los TFM `net10.0`, que es lo compilable en Linux.
+
+### Cambiado
+
+- `cd-nuget.yml` publica ahora los **8** paquetes, repartiendo el `pack` en dos
+  runners: los seis `net10.0` en el self-hosted y `MotorDsl.Bluetooth` y
+  `MotorDsl.Maui` en `macos-15`. Es una restricción estructural, no una preferencia:
+  `dotnet pack` de un proyecto multi-TFM exige compilar todos sus TFM y el workload
+  `ios` no existe para Linux. Antes se publicaban 4 y los otros 3 dependían de un
+  script local de Windows.
+- `ci.yml` deja de declarar un número fijo de tests en el nombre del job y en el
+  comentario de PR: decía 185 cuando la suite ya corría 259.
+
+### Notas para el consumidor
+
+- Una app que imprima por red en iOS debe declarar `NSLocalNetworkUsageDescription`
+  en su `Info.plist`. Sin esa clave, iOS 14+ termina la app sin mensaje útil.
+- En Android, `MotorDsl.Network` requiere los permisos `INTERNET` y
+  `ACCESS_NETWORK_STATE`.
+
 
 ## [1.0.13] - 2026-07-13
 

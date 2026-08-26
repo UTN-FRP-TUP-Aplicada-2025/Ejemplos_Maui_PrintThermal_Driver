@@ -13,13 +13,20 @@ renderers.
 
 ```bash
 dotnet add package MotorDsl.Maui
-dotnet add package MotorDsl.Bluetooth
+dotnet add package MotorDsl.Bluetooth   # impresión Bluetooth — solo Android
+dotnet add package MotorDsl.Network     # impresión por red TCP — Android e iOS
 ```
 
 `MotorDsl.Maui` trae como dependencias transitivas
 `MotorDsl.Printing.Abstractions`, `MotorDsl.Core`, `MotorDsl.Rendering` y
-`MotorDsl.Extensions`. Con esos dos `PackageReference` queda armado el stack
-completo para una app MAUI con impresión Bluetooth en Android.
+`MotorDsl.Extensions`.
+
+Elegí el transport según el medio por el que llega el ticket a la impresora.
+`MotorDsl.Bluetooth` cubre las térmicas Classic SPP, que es el parque habitual,
+pero **solo funciona en Android**: Apple no expone ese perfil a apps de terceros.
+`MotorDsl.Network` habla con impresoras de red por TCP y funciona en las dos
+plataformas, así que es el camino para imprimir desde iOS. Los dos pueden
+registrarse a la vez y conviven: el servicio rutea por `Kind`.
 
 ---
 
@@ -32,6 +39,7 @@ completo para una app MAUI con impresión Bluetooth en Android.
 | `MotorDsl.Rendering` | net10.0 | Renderers Text + EscPos básicos | Core |
 | `MotorDsl.Extensions` | net10.0 | Fluent DI: `AddMotorDslEngine`, `AddTemplates`, `AddProfiles`, `AddRenderer` | Core, Parser, Rendering |
 | `MotorDsl.Printing.Abstractions` | net10.0 | Contratos transport-agnostic (`IThermalPrinterTransport`, `IThermalPrinterService`, `PrinterDevice`) y orquestador con retry/eventos | Core |
+| `MotorDsl.Network` | net10.0 | Transport de red TCP 9100 (RAW / JetDirect). Multiplataforma: Android, iOS y escritorio | Printing.Abstractions |
 | `MotorDsl.Bluetooth` | net10.0-android;net10.0-ios | Transport BT Classic SPP (Android). iOS lanza `PlatformNotSupportedException` | Printing.Abstractions |
 | `MotorDsl.Maui` | net10.0-android;net10.0-ios | Controles MAUI (`PrinterStatusBadge`, `PrinterPickerView`, `MauiRasterPreview`, `MauiDocumentPreview`, `MauiDiagnosticsView`), renderers (PDF, ESC/POS bitmap, raster preview), `MauiPrintErrorHandler` y diagnóstico (`MauiDiagnosticsReportProvider`) | Core, Rendering, Extensions, Printing.Abstractions |
 
@@ -83,8 +91,15 @@ public static class MauiProgram
             })
             .AddMotorDslMaui();
 
-        // Transport Bluetooth (Android Classic SPP)
+        // Transport Bluetooth Classic SPP: solo Android. En iOS lanza
+        // PlatformNotSupportedException, así que no se registra ahí.
+#if ANDROID
         builder.Services.AddBluetoothPrinterTransport();
+#endif
+
+        // Transport de red: funciona en Android y en iOS.
+        builder.Services.AddNetworkPrinterTransport(o => o
+            .AddPrinter("192.168.1.50"));       // puerto 9100 por defecto
 
 #if DEBUG
         builder.Logging.AddDebug();
@@ -96,12 +111,33 @@ public static class MauiProgram
 
 ### 3. Permisos Android (`Platforms/Android/AndroidManifest.xml`)
 
+Para `MotorDsl.Bluetooth`:
+
 ```xml
 <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
                  android:usesPermissionFlags="neverForLocation" />
 <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 ```
+
+Para `MotorDsl.Network`:
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+```
+
+### 4. Permisos iOS (`Platforms/iOS/Info.plist`)
+
+`MotorDsl.Network` accede a la red local, y desde iOS 14 eso requiere declarar el
+motivo. **Sin esta clave el sistema termina la app sin un mensaje de error útil**:
+
+```xml
+<key>NSLocalNetworkUsageDescription</key>
+<string>Se usa para enviar los documentos a la impresora térmica de la red local.</string>
+```
+
+`MotorDsl.Bluetooth` no necesita ninguna clave en iOS porque no funciona ahí.
 
 ### 4. UI declarativa con los componentes incluidos
 
@@ -198,6 +234,7 @@ PrintThermal_Motor_Maui/
 │   ├── MotorDsl.Rendering/               Renderers texto + ESC/POS
 │   ├── MotorDsl.Extensions/              Fluent DI (AddMotorDslEngine)
 │   ├── MotorDsl.Printing.Abstractions/   Contratos de transport + orquestador
+│   ├── MotorDsl.Network/                 Transport de red TCP 9100 (Android + iOS)
 │   ├── MotorDsl.Bluetooth/               Transport BT Classic SPP (Android)
 │   ├── MotorDsl.Maui/                    Controles + renderers + error handler MAUI
 │   └── MotorDsl.Tests/                   Tests del motor
@@ -260,7 +297,7 @@ y en
 
 ## 📤 Publicación NuGet
 
-Los 7 paquetes se publican unificados con la misma versión vía:
+Los 8 paquetes se publican unificados con la misma versión vía:
 
 ```bash
 scripts/nuget/publish-motordsl-nuget.bat
@@ -274,8 +311,10 @@ Detalles en
 ## 🗺️ Roadmap
 
 - ✅ Transport Bluetooth Classic SPP (Android)
+- ✅ Transport de red TCP 9100 — habilita impresión en iOS
 - ⏳ Transport USB
-- ⏳ Transport BLE / Red TCP
+- ⏳ Transport BLE
+- ⏳ Descubrimiento de impresoras de red por mDNS / Bonjour
 - ⏳ Renderer raster con nearest-neighbor real (SKCanvasView)
 - ⏳ EAN-13 nativo en raster preview y PDF (hoy fallback a texto)
 

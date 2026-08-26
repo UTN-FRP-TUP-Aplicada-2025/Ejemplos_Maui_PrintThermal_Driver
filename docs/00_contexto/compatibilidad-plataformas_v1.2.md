@@ -1,20 +1,24 @@
 # Compatibilidad de Plataformas
 
 **Proyecto:** Motor de Documentos e Impresión basado en DSL
-**Documento:** compatibilidad-plataformas_v1.1.md
-**Versión:** 1.1
-**Estado:** Histórico
-**Fecha:** 2026-05-06
-
-> **⚠️ Documento histórico — versión 1.1.** Describe iOS como plataforma sin capacidad de
-> impresión, algo que dejó de ser cierto: `MotorDsl.Network` (TCP 9100) la habilita. Para la
-> versión actual ver [compatibilidad-plataformas_v1.2.md](./compatibilidad-plataformas_v1.2.md).
+**Documento:** compatibilidad-plataformas_v1.2.md
+**Versión:** 1.2
+**Estado:** Vigente
+**Fecha:** 2026-08-08
 
 ---
 
-## Cambios desde v1.0
+## Cambios desde v1.1
 
-- Se reorganizó la matriz reflejando los **7 paquetes publicados** (no 4).
+- **iOS puede imprimir.** Se incorpora `MotorDsl.Network`, transport de red TCP al
+  puerto 9100, y con él la limitación de la §4 deja de significar «en iOS no se
+  imprime» para significar «en iOS no se imprime por Bluetooth Classic».
+- La matriz pasa a **8 paquetes publicados**.
+- La §8 mueve «Red TCP (puerto 9100)» de planificado a implementado.
+
+## Cambios de v1.0 a v1.1
+
+- Se reorganizó la matriz reflejando los paquetes publicados (no 4).
 - Se eliminó la antigua `ThermalPrinterService` (Bluetooth ad-hoc por sample) y
   se documenta el nuevo modelo: orquestador agnóstico + transports.
 - iOS deja de necesitar implementaciones ad-hoc en cada sample: ahora se trata
@@ -33,7 +37,7 @@ La librería core del Motor DSL es **multiplataforma** y funciona en cualquier
 entorno compatible con .NET 10. Sin embargo, la conectividad Bluetooth Classic
 SPP para impresoras térmicas ESC/POS solo está disponible en **Android**.
 
-Este documento detalla la compatibilidad de cada uno de los 7 paquetes por
+Este documento detalla la compatibilidad de cada uno de los 8 paquetes por
 plataforma, explica las limitaciones técnicas de iOS y describe las alternativas
 disponibles para soporte multiplataforma.
 
@@ -48,14 +52,15 @@ disponibles para soporte multiplataforma.
 | **MotorDsl.Rendering** | ✅ | ✅ | ✅ | TextRenderer + EscPosRenderer. |
 | **MotorDsl.Extensions** | ✅ | ✅ | ✅ | DI fluent (`AddMotorDslEngine`, `AddRenderer`). |
 | **MotorDsl.Printing.Abstractions** | ✅ | ✅ | ✅ | Contratos puros + orquestador. Independiente de MAUI y plataforma. |
+| **MotorDsl.Network** | ✅ | ✅ | ✅ | TFM `net10.0` puro. Transport TCP 9100. Al no llevar sufijo de plataforma es consumible desde cualquier TFM por herencia. |
 | **MotorDsl.Bluetooth** | ✅ Classic SPP | ❌ Lanza `PlatformNotSupportedException` | ❌ | TFMs `net10.0-android;net10.0-ios`. iOS está como TFM por compilación, pero el código tira excepción explícita. |
 | **MotorDsl.Maui** | ✅ | ✅ (sin BT) | ❌ MAUI no soporta desktop nativo aquí | Renderers (PDF, ESC/POS bitmap, raster), controles, error handler. |
 
 ### Resumen por plataforma
 
 - **Android:** Soporte completo del stack (DSL + render + impresión BT + PDF + raster).
-- **iOS:** DSL + render + PDF + raster + UI MAUI. **Sin impresión Bluetooth Classic** (ver sección 4). Es necesario registrar otro `IThermalPrinterTransport` para imprimir.
-- **Windows / Linux / macOS (apps no MAUI):** DSL + render + PDF posibles. Para impresión hay que registrar un transport nativo (USB / Red TCP) — no incluido por el momento.
+- **iOS:** DSL + render + PDF + raster + UI MAUI, **más impresión por red** con `MotorDsl.Network`. Sigue sin haber Bluetooth Classic (ver sección 4), pero eso ya no impide imprimir: cambia el medio, no la capacidad.
+- **Windows / Linux / macOS (apps no MAUI):** DSL + render + PDF, e impresión por red con `MotorDsl.Network`, que al ser `net10.0` puro también resuelve ahí. USB sigue sin transport.
 
 ---
 
@@ -120,7 +125,12 @@ restricción del sistema operativo iOS impuesta por Apple.
 
 ### Detalle de cada alternativa
 
-#### 5.1 Impresoras WiFi (recomendado para iOS)
+#### 5.1 Impresoras WiFi (implementado — `MotorDsl.Network`)
+
+> **Actualización v1.2**: esta alternativa dejó de ser un ejemplo a escribir por el
+> consumidor. El transport viene publicado en `MotorDsl.Network`; alcanza con
+> `AddNetworkPrinterTransport()`. El código de más abajo se conserva como
+> ilustración de cómo se implementa un transport propio.
 
 Algunas impresoras térmicas (Epson TM-T20III, Star TSP100, etc.) soportan WiFi.
 El motor genera los mismos bytes ESC/POS; solo cambia el transport.
@@ -188,7 +198,7 @@ Si un equipo necesita soporte iOS con impresión, estos son los pasos:
 |---|---|---|---|---|
 | **Bluetooth clásico (SPP)** | ✅ Nativo (paquete `MotorDsl.Bluetooth`) | ❌ Bloqueado por Apple | ⚠️ Posible vía SerialPort | Mayoría de térmicas 58mm/80mm |
 | **Bluetooth Low Energy (BLE)** | ✅ Custom transport | ✅ Custom transport (CoreBluetooth) | ✅ | Modelos recientes/premium |
-| **WiFi (TCP socket)** | ✅ Custom transport | ✅ Custom transport | ✅ | Epson TM-T20III, Star TSP100 |
+| **WiFi (TCP socket)** | ✅ Nativo (paquete `MotorDsl.Network`) | ✅ Nativo (paquete `MotorDsl.Network`) | ✅ Nativo (paquete `MotorDsl.Network`) | Epson TM-T20III, Star TSP100 |
 | **USB** | ⚠️ OTG (custom transport) | ❌ | ✅ Custom transport | Modelos de escritorio |
 | **AirPrint** | ❌ | ✅ Nativo (vía PDF) | ❌ | Impresoras de red compatibles |
 
@@ -202,7 +212,7 @@ Si un equipo necesita soporte iOS con impresión, estos son los pasos:
 | Bluetooth Classic SPP (iOS) | ❌ Imposible (restricción del SO) | — |
 | BLE | ⏳ Planificado | — |
 | USB | ⏳ Planificado | — |
-| Red TCP (puerto 9100) | ⏳ Planificado | — |
+| Red TCP (puerto 9100) | ✅ Implementado | `MotorDsl.Network` |
 | AirPrint | ✅ Disponible vía `PdfRenderer` + `Launcher` | `MotorDsl.Maui` |
 
 ---
@@ -231,6 +241,7 @@ Si un equipo necesita soporte iOS con impresión, estos son los pasos:
 |---------|------------|-------------|
 | 1.0     | 2026-03-30 | Versión inicial — documentación de compatibilidad iOS/Android/Windows. |
 | 1.1     | 2026-05-06 | Reorganización post-refactor: 7 paquetes, transports como extension point, iOS lanza `PlatformNotSupportedException` explícita. |
+| 1.2     | 2026-08-08 | `MotorDsl.Network` (TCP 9100) habilita impresión en iOS. 8 paquetes. |
 
 ---
 

@@ -31,7 +31,7 @@ los demás llegan como dependencias transitivas de `MotorDsl.Maui`:
 </ItemGroup>
 ```
 
-Los 7 paquetes resultantes (referencia completa):
+Los 8 paquetes resultantes (referencia completa):
 
 ```xml
 <ItemGroup>
