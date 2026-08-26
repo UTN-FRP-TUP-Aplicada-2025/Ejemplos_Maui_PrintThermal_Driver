@@ -8,6 +8,53 @@ versión de los paquetes se inyecta en build/pack vía `-p:PackageVersion` /
 `-p:MotorDslVersion` (ver `docs/09_devops/estrategia-versionado_v1.0.md`), por lo
 que el número de versión **no** vive en los `.csproj`.
 
+## [1.0.15] - 2026-08-26
+
+### Corregido
+
+- **La reconexión Bluetooth fallaba cuando había un enlace vivo que derribar** —
+  típicamente la **segunda impresión consecutiva** contra la misma impresora.
+  `BluetoothPrinterTransport.ConnectAsync` llamaba a `InvalidateConnection()`
+  (`BluetoothSocket.Close()`) e inmediatamente abría el socket nuevo. `Close()`
+  vuelve enseguida, pero el stack de Android sigue liberando RFCOMM/L2CAP/ACL:
+  medido en un `moto g42` contra una `MTP-II`, la petición de conexión nueva salía
+  a los **6 ms** del `Close()`, el RFCOMM viejo recién cerraba a **+35 ms** y el
+  ACL caía a **+276 ms** con `hciReason 19` (*remote user terminated*), llevándose
+  puesto el socket recién abierto (`find_rfc_slot_by_id unable to find RFCOMM
+  slot`). La conexión devolvía `false` y el consumidor lo reportaba como
+  «impresora no responde»; reintentar funcionaba porque ya no quedaba enlace vivo.
+
+  Ahora `ConnectAsync`:
+  - espera `LINK_TEARDOWN_SETTLE_MS` (600 ms) **sólo** si el cierre previo derribó
+    un enlace realmente establecido — la primera conexión del proceso no espera
+    nada;
+  - reintenta la apertura una vez (`CONNECT_MAX_ATTEMPTS` = 2, backoff
+    `CONNECT_RETRY_DELAY_MS` = 800 ms), para cubrir la variabilidad del teardown
+    entre modelos de impresora.
+
+  El marcado del teardown pendiente se hace en `InvalidateConnection()` y en
+  `DisconnectAsync()`, así que también cubre la reconexión silenciosa de
+  `ThermalPrinterService.ReconnectInternalAsync` tras una escritura fallida.
+
+### Cambiado
+
+- `BluetoothPrinterTransport`: el cuerpo de la apertura del socket se extrajo a
+  `AbrirSocketAsync` (un intento: SDP + `Connect` + streams + detección de
+  capacidades) y la limpieza se separó en dos métodos con semántica distinta:
+  `InvalidateConnection()` (cerró un enlace vivo ⇒ marca teardown pendiente) y
+  `DiscardSocket()` (socket que nunca llegó a conectar ⇒ no penaliza al próximo
+  intento). `ConnectAsync` ya no envuelve la cancelación: una
+  `OperationCanceledException` del llamador se propaga sin reintentar.
+
+> **Costo conocido**: una reconexión legítima paga ahora hasta 600 ms extra, y el
+> flag de teardown no expira, así que una conexión muy posterior a un
+> `Disconnect` también los paga. La conexión completa medida en el mismo equipo
+> es de ~770 ms, así que el orden de magnitud no cambia.
+
+> **Verificación**: el cambio vive íntegramente bajo `#if ANDROID` y
+> `MotorDsl.Tests` no referencia `MotorDsl.Bluetooth`, por lo que **no tiene
+> cobertura de tests unitarios**: se valida en dispositivo físico.
+
 ## [1.0.13] - 2026-07-13
 
 ### Corregido
@@ -44,4 +91,5 @@ que el número de versión **no** vive en los `.csproj`.
   `BitmapEscPosRenderer` que volcaban parte del base64 de la imagen a la salida
   estándar en cada render.
 
+[1.0.15]: https://github.com/Aplicada-Streaming/PrintThermal_Motor_Maui/releases/tag/v1.0.15
 [1.0.13]: https://github.com/Aplicada-Streaming/PrintThermal_Motor_Maui/releases/tag/v1.0.13

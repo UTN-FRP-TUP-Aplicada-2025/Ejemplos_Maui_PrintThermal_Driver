@@ -27,6 +27,25 @@ public partial class BluetoothPrinterTransport : IThermalPrinterTransport
     private Java.IO.InputStream? _javaInputStream;
     // Capacidades detectadas al conectar; null hasta detectar, Unknown() tras invalidar.
     private PrinterCapabilities? _capabilities;
+
+    // Marca que el ultimo cierre derribo un enlace VIVO. BluetoothSocket.Close() vuelve
+    // enseguida, pero el stack de Android sigue liberando RFCOMM/L2CAP/ACL por cientos de
+    // ms: la proxima conexion tiene que esperar ese teardown (ver ConnectAsync).
+    private bool _pendingLinkTeardown;
+
+    // Espera tras derribar un enlace vivo, antes de abrir el socket nuevo. Medida en un
+    // moto g42 contra una MTP-II: el RFCOMM viejo cierra a +35 ms del Close() y el ACL
+    // recien cae a +276 ms. Sin esta espera la impresora, al procesar la desconexion del
+    // canal anterior, tira el enlace entero (hciReason 19 = remote user terminated) y se
+    // lleva puesta la conexion nueva, que queda a medio configurar.
+    private const int LINK_TEARDOWN_SETTLE_MS = 600;
+
+    // Intentos de apertura del socket RFCOMM dentro de UNA llamada a ConnectAsync. El
+    // segundo intento cubre la variabilidad del teardown entre modelos de impresora.
+    private const int CONNECT_MAX_ATTEMPTS = 2;
+
+    // Backoff entre intentos de apertura.
+    private const int CONNECT_RETRY_DELAY_MS = 800;
 #endif
 
     private string? _lastDeviceAddress;
@@ -95,44 +114,58 @@ public partial class BluetoothPrinterTransport : IThermalPrinterTransport
         return Task.FromResult<IReadOnlyList<PrinterDevice>>(devices);
     }
 
+    /// <summary>
+    /// Abre el socket RFCOMM SPP contra <paramref name="deviceId"/>.
+    /// <para>
+    /// Si el cierre anterior derribo un enlace VIVO —reconectar sobre una conexion abierta,
+    /// <see cref="DisconnectAsync"/>, o una escritura fallida que invalido la conexion—
+    /// espera a que el stack lo libere antes de abrir el nuevo, y reintenta una vez ante
+    /// fallo. Sin esa espera, la peticion de conexion sale ~6 ms despues del Close() y entra
+    /// en carrera con el teardown: hay impresoras que responden tirando el ACL completo, que
+    /// se lleva puesto el socket recien abierto. Era el fallo de la 2.a impresion consecutiva.
+    /// </para>
+    /// </summary>
     public async Task<bool> ConnectAsync(string deviceId, CancellationToken ct = default)
     {
 #if ANDROID
-        try
+        // Limpia cualquier socket/stream previo antes de abrir uno nuevo (reconexion).
+        // IsConnected queda en false hasta confirmar la conexion mas abajo.
+        InvalidateConnection();
+
+        // Solo se paga cuando REALMENTE habia un enlace que derribar: la primera conexion
+        // del proceso no espera nada.
+        if (_pendingLinkTeardown)
         {
-            // Limpia cualquier socket/stream previo antes de abrir uno nuevo (reconexion).
-            // IsConnected queda en false hasta confirmar la conexion mas abajo.
-            InvalidateConnection();
-
-            var device = _bluetoothAdapter!.GetRemoteDevice(deviceId)
-                ?? throw new Exception("No se pudo encontrar el dispositivo");
-
-            var uuid = UUID.FromString("00001101-0000-1000-8000-00805F9B34FB")!;
-            _socket = device.CreateRfcommSocketToServiceRecord(uuid)!;
-
-            await Task.Run(() => _socket.Connect(), ct);
-            _outputStream = _socket.OutputStream;
-            _inputStream = _socket.InputStream;
-            // Capturamos el InputStream Java subyacente para poder usar Available() y leer SIN
-            // bloquear (gating por bytes disponibles). Si no se puede, el status degrada solo.
-            _javaInputStream = (_inputStream as Android.Runtime.InputStreamInvoker)?.BaseInputStream;
-
-            IsConnected = true;
-            _lastDeviceAddress = deviceId;
-            _currentDevice = new PrinterDevice(deviceId, device.Name ?? deviceId, "bluetooth", IsPaired: true);
-
-            // Deteccion de capacidades best-effort, tras tener socket + streams. NUNCA puede
-            // hacer fallar la conexion: ante cualquier excepcion, queda en Unknown y se continua.
-            try { _capabilities = await DetectCapabilitiesAsync(ct); }
-            catch { _capabilities = PrinterCapabilities.Unknown(); }
-
-            return true;
+            _pendingLinkTeardown = false;
+            await Task.Delay(LINK_TEARDOWN_SETTLE_MS, ct);
         }
-        catch (Exception ex)
+
+        Exception? ultimoError = null;
+        for (int intento = 1; intento <= CONNECT_MAX_ATTEMPTS; intento++)
         {
-            IsConnected = false;
-            throw new Exception($"Error al conectar: {ex.Message}", ex);
+            if (intento > 1) await Task.Delay(CONNECT_RETRY_DELAY_MS, ct);
+
+            try
+            {
+                return await AbrirSocketAsync(deviceId, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                // Cancelacion del llamador: no es un fallo de conexion, no se reintenta.
+                DiscardSocket();
+                throw;
+            }
+            catch (Exception ex)
+            {
+                ultimoError = ex;
+                // Descarta el socket a medio abrir SIN marcar teardown pendiente: no llego a
+                // establecerse un enlace, y marcarlo agregaria una espera de mas.
+                DiscardSocket();
+            }
         }
+
+        IsConnected = false;
+        throw new Exception($"Error al conectar: {ultimoError!.Message}", ultimoError);
 #elif IOS
         await Task.CompletedTask;
         throw new PlatformNotSupportedException("iOS no soporta Bluetooth Classic SPP. Usar BLE o impresion por red.");
@@ -142,9 +175,47 @@ public partial class BluetoothPrinterTransport : IThermalPrinterTransport
 #endif
     }
 
+#if ANDROID
+    /// <summary>
+    /// Un intento de apertura del socket RFCOMM: SDP + Connect + streams + deteccion de
+    /// capacidades. No limpia nada al fallar: de eso se encarga <see cref="ConnectAsync"/>,
+    /// que es quien decide si reintenta.
+    /// </summary>
+    private async Task<bool> AbrirSocketAsync(string deviceId, CancellationToken ct)
+    {
+        var device = _bluetoothAdapter!.GetRemoteDevice(deviceId)
+            ?? throw new Exception("No se pudo encontrar el dispositivo");
+
+        var uuid = UUID.FromString("00001101-0000-1000-8000-00805F9B34FB")!;
+        _socket = device.CreateRfcommSocketToServiceRecord(uuid)!;
+
+        await Task.Run(() => _socket.Connect(), ct);
+        _outputStream = _socket.OutputStream;
+        _inputStream = _socket.InputStream;
+        // Capturamos el InputStream Java subyacente para poder usar Available() y leer SIN
+        // bloquear (gating por bytes disponibles). Si no se puede, el status degrada solo.
+        _javaInputStream = (_inputStream as Android.Runtime.InputStreamInvoker)?.BaseInputStream;
+
+        IsConnected = true;
+        _lastDeviceAddress = deviceId;
+        _currentDevice = new PrinterDevice(deviceId, device.Name ?? deviceId, "bluetooth", IsPaired: true);
+
+        // Deteccion de capacidades best-effort, tras tener socket + streams. NUNCA puede
+        // hacer fallar la conexion: ante cualquier excepcion, queda en Unknown y se continua.
+        try { _capabilities = await DetectCapabilitiesAsync(ct); }
+        catch { _capabilities = PrinterCapabilities.Unknown(); }
+
+        return true;
+    }
+#endif
+
     public async Task DisconnectAsync()
     {
 #if ANDROID
+        // Desconectar deja el enlace liberandose: si el llamador vuelve a conectar enseguida,
+        // ConnectAsync tiene que esperar ese teardown igual que tras una reconexion.
+        if (_socket != null) _pendingLinkTeardown = true;
+
         try
         {
             if (_outputStream != null)
@@ -262,8 +333,24 @@ public partial class BluetoothPrinterTransport : IThermalPrinterTransport
     /// streams y socket (con guardas null y swallow de errores internos, no lanza) y deja
     /// todo en null. Asi ReconnectInternalAsync del servicio detecta IsConnected==false y
     /// vuelve a conectar en el siguiente intento del retry.
+    /// <para>
+    /// A diferencia de <see cref="DiscardSocket"/>, si habia un socket deja marcado
+    /// <c>_pendingLinkTeardown</c>: el enlace no queda liberado al volver de <c>Close()</c> y
+    /// la proxima conexion tiene que esperarlo.
+    /// </para>
     /// </summary>
     private void InvalidateConnection()
+    {
+        if (_socket != null) _pendingLinkTeardown = true;
+        DiscardSocket();
+    }
+
+    /// <summary>
+    /// Descarta streams y socket sin marcar teardown pendiente. Es el cierre de un socket que
+    /// <b>no llego a establecer enlace</b> (intento de conexion fallido): no hay nada que el
+    /// stack tenga que liberar, asi que no corresponde penalizar al proximo intento.
+    /// </summary>
+    private void DiscardSocket()
     {
         IsConnected = false;
 
