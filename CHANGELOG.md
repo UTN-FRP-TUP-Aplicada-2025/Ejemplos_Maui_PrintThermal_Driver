@@ -11,6 +11,26 @@ que el número de versión **no** vive en los `.csproj`.
 
 ## [1.0.15] - 2026-08-26
 
+### Añadido
+
+- **`MotorDsl.Network`**: octavo paquete, transport de impresión por socket TCP al
+  puerto 9100 (RAW / JetDirect). **Habilita impresión térmica en iOS**, que hasta
+  ahora era imposible porque el único transport disponible era Bluetooth Classic
+  SPP y Apple no expone ese perfil a apps de terceros.
+
+  El paquete targetea **`net10.0` puro**. No usa ninguna API de plataforma
+  —`System.Net.Sockets` es BCL—, así que es consumible desde `net10.0-android` y
+  `net10.0-ios` por herencia de TFM, se compila y empaqueta en cualquier sistema
+  operativo, y `MotorDsl.Tests` lo referencia directamente sin el enlace por
+  `<Compile Include>` que necesita `MotorDsl.Bluetooth`.
+
+  Se registra con `AddNetworkPrinterTransport()` y expone `Kind = "network"`, de
+  modo que convive con el transport Bluetooth: el servicio rutea por `Kind`.
+- **`TransportChunking`** en `MotorDsl.Printing.Abstractions`: helper público con
+  el chunker de tamaño fijo, para que cualquier transport lo reutilice.
+- **Devcontainer** (`.devcontainer/`) para desarrollar en Linux sin instalar el SDK
+  en la máquina anfitriona. Cubre los TFM `net10.0`, que es lo compilable en Linux.
+
 ### Corregido
 
 - **La reconexión Bluetooth fallaba cuando había un enlace vivo que derribar** —
@@ -47,36 +67,6 @@ que el número de versión **no** vive en los `.csproj`.
   intento). `ConnectAsync` ya no envuelve la cancelación: una
   `OperationCanceledException` del llamador se propaga sin reintentar.
 
-> **Costo conocido**: una reconexión legítima paga ahora hasta 600 ms extra, y el
-> flag de teardown no expira, así que una conexión muy posterior a un
-> `Disconnect` también los paga. La conexión completa medida en el mismo equipo
-> es de ~770 ms, así que el orden de magnitud no cambia.
-
-> **Verificación**: el cambio vive íntegramente bajo `#if ANDROID` y
-> `MotorDsl.Tests` no referencia `MotorDsl.Bluetooth`, por lo que **no tiene
-> cobertura de tests unitarios**: se valida en dispositivo físico.
-
-
-- **`MotorDsl.Network`**: octavo paquete, transport de impresión por socket TCP al
-  puerto 9100 (RAW / JetDirect). **Habilita impresión térmica en iOS**, que hasta
-  ahora era imposible porque el único transport disponible era Bluetooth Classic
-  SPP y Apple no expone ese perfil a apps de terceros.
-
-  El paquete targetea **`net10.0` puro**. No usa ninguna API de plataforma
-  —`System.Net.Sockets` es BCL—, así que es consumible desde `net10.0-android` y
-  `net10.0-ios` por herencia de TFM, se compila y empaqueta en cualquier sistema
-  operativo, y `MotorDsl.Tests` lo referencia directamente sin el enlace por
-  `<Compile Include>` que necesita `MotorDsl.Bluetooth`.
-
-  Se registra con `AddNetworkPrinterTransport()` y expone `Kind = "network"`, de
-  modo que convive con el transport Bluetooth: el servicio rutea por `Kind`.
-- **`TransportChunking`** en `MotorDsl.Printing.Abstractions`: helper público con
-  el chunker de tamaño fijo, para que cualquier transport lo reutilice.
-- **Devcontainer** (`.devcontainer/`) para desarrollar en Linux sin instalar el SDK
-  en la máquina anfitriona. Cubre los TFM `net10.0`, que es lo compilable en Linux.
-
-### Cambiado
-
 - `cd-nuget.yml` publica ahora los **8** paquetes, repartiendo el `pack` en dos
   runners: los seis `net10.0` en el self-hosted y `MotorDsl.Bluetooth` y
   `MotorDsl.Maui` en `macos-15`. Es una restricción estructural, no una preferencia:
@@ -85,6 +75,15 @@ que el número de versión **no** vive en los `.csproj`.
   script local de Windows.
 - `ci.yml` deja de declarar un número fijo de tests en el nombre del job y en el
   comentario de PR: decía 185 cuando la suite ya corría 259.
+
+> **Costo conocido**: una reconexión legítima paga ahora hasta 600 ms extra, y el
+> flag de teardown no expira, así que una conexión muy posterior a un
+> `Disconnect` también los paga. La conexión completa medida en el mismo equipo
+> es de ~770 ms, así que el orden de magnitud no cambia.
+
+> **Verificación**: el fix de Bluetooth vive íntegramente bajo `#if ANDROID` y
+> `MotorDsl.Tests` no referencia `MotorDsl.Bluetooth`, por lo que **no tiene
+> cobertura de tests unitarios**: se valida en dispositivo físico.
 
 ### Notas para el consumidor
 
@@ -130,5 +129,5 @@ que el número de versión **no** vive en los `.csproj`.
   `BitmapEscPosRenderer` que volcaban parte del base64 de la imagen a la salida
   estándar en cada render.
 
-[1.0.15]: https://github.com/Aplicada-Streaming/PrintThermal_Motor_Maui/releases/tag/v1.0.15
-[1.0.13]: https://github.com/Aplicada-Streaming/PrintThermal_Motor_Maui/releases/tag/v1.0.13
+[1.0.15]: https://github.com/hdcm-dev/ThermalPrint.MotorDsl.Core/releases/tag/v1.0.15
+[1.0.13]: https://github.com/hdcm-dev/ThermalPrint.MotorDsl.Core/releases/tag/v1.0.13
