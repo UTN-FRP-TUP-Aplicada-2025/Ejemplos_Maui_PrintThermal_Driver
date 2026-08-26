@@ -9,6 +9,70 @@ versión de los paquetes se inyecta en build/pack vía `-p:PackageVersion` /
 que el número de versión **no** vive en los `.csproj`.
 
 
+## [1.0.16] - 2026-08-26
+
+### Corregido
+
+- **El logo salía destruido en impresoras que no filtran los comandos de tiempo real.**
+  `BluetoothPrinterTransport.WriteBytesAsync` intercalaba un sondeo de estado
+  `DLE EOT n=1` (`10 04 01`) **antes de cada bloque de 256 bytes**
+  (`POLL_EVERY_N_CHUNKS = 1`). El chunking es ciego al contenido, así que en un
+  ticket con logo eso significaba **50 sondeos = 150 bytes inyectados dentro de
+  los 12 800 bytes de datos de píxeles** de un `GS v 0`.
+
+  En ESC/POS los comandos `DLE` son *real-time*: la impresora debe atenderlos sin
+  consumirlos como datos. Una `MTP-II` (se identifica como `-PT2D-V1.0`)
+  **responde el sondeo pero además suma esos 3 bytes al raster**, con lo que la
+  imagen se corre 3 bytes cada 256 y sale un barrido diagonal. Una `58HB6` los
+  filtra bien y por eso el defecto estaba enmascarado.
+
+  Verificado sobre capturas HCI en un `moto g42`: mismo documento de 13 728 B a
+  las dos impresoras, con sondas inyectadas en ambas (150 B y 33 B), sólo la
+  `MTP-II` se rompe; y el mismo documento **sin sondas** imprime bien en la
+  `MTP-II`. Tras el cambio, un ticket sale con **5 sondas, todas previas al
+  documento, y 0 intercaladas**.
+
+  Se elimina el sondeo por bloque —no gateó nunca: 59 de 59 lecturas dieron
+  `Ready`, y `DLE EOT` no informa bytes libres de buffer, sólo online/papel/tapa—
+  y se **conserva** `CheckHardwareFastFailAsync`, que corre una vez antes del
+  envío, fuera de toda carga útil, y sigue dando `paper out` / `cover open`.
+
+- **Una escritura bloqueada colgaba el envío sin límite.** El control de flujo
+  real es el de RFCOMM (créditos): cuando la impresora deja de otorgarlos,
+  `WriteAsync` se bloquea. Medido: **106,5 s** sin un solo byte y el enlace muerto
+  recién ~4 min después, con 2 416 de 13 728 bytes entregados y el corte dentro
+  del raster. `MotorDsl.Network` ya tenía `WriteTimeout`; el transport Bluetooth
+  no tenía equivalente.
+
+  Ahora cada bloque está acotado por `PrinterProfile.WriteTimeoutMs`. El `write`
+  de un `OutputStream` de Java es bloqueante y **no atiende el
+  `CancellationToken`**, así que se corre en un `Task` y se compite contra un
+  delay; al vencer se lanza `TimeoutException` (→ `PrintErrorType.Timeout`,
+  reintentable) y se invalida la conexión, que además libera el hilo bloqueado.
+
+  Al vencer **no** se sondea la causa por ese mismo stream: sin créditos el sondeo
+  se bloquearía igual, y si el write pendiente se destraba después, sus bytes
+  quedarían intercalados en la carga útil. La causa la nombra
+  `CheckHardwareFastFailAsync` al principio del siguiente intento.
+
+### Añadido
+
+- `PrinterProfile.WriteTimeoutMs` (default **10 s**): tope de escritura por bloque
+  en el transport Bluetooth.
+
+### Eliminado
+
+- `WaitUntilReadyAsync`, `QueryStatusAsync`, `NextPacingDecision` y las constantes
+  `POLL_EVERY_N_CHUNKS`, `MAX_READY_POLLS`, `READY_POLL_DELAY_MS`, junto con los
+  dos tests del latch de degradación del pacing. Eran las piezas del sondeo por
+  bloque; no se reactivan.
+
+  Se conservan `ParseStatusByte` y `PrinterStatus`: son el parser puro del byte de
+  status, no política.
+
+> Diagnóstico completo, capturas y evidencia en el repositorio de documentación de
+> `GDA.Core.APP`: `PROMPTs/Fixs/13-Impresion-Logo/`.
+
 ## [1.0.15] - 2026-08-26
 
 ### Añadido
@@ -129,5 +193,6 @@ que el número de versión **no** vive en los `.csproj`.
   `BitmapEscPosRenderer` que volcaban parte del base64 de la imagen a la salida
   estándar en cada render.
 
+[1.0.16]: https://github.com/hdcm-dev/ThermalPrint.MotorDsl.Core/releases/tag/v1.0.16
 [1.0.15]: https://github.com/hdcm-dev/ThermalPrint.MotorDsl.Core/releases/tag/v1.0.15
 [1.0.13]: https://github.com/hdcm-dev/ThermalPrint.MotorDsl.Core/releases/tag/v1.0.13

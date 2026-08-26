@@ -12,6 +12,15 @@ public class PrinterProfile
     public int CutDelayMs { get; set; } = 500;
     public int InitCommandDelayMs { get; set; } = 300;
 
+    /// <summary>
+    /// Tope para la escritura de UN bloque. El control de flujo real lo aportan los creditos
+    /// RFCOMM: cuando la impresora deja de otorgarlos, el write se bloquea. Este timeout es como
+    /// se OBSERVA ese bloqueo — sin el, una impresora que deja de drenar cuelga el envio hasta que
+    /// el enlace muere solo (medido: 106 s de bloqueo y ~4 min hasta la caida del ACL).
+    /// Al vencer, el transport invalida la conexion y el reintento reconecta.
+    /// </summary>
+    public int WriteTimeoutMs { get; set; } = 10_000;
+
     public static PrinterProfile Thermal58mm => new()
     {
         Name = "thermal_58mm",

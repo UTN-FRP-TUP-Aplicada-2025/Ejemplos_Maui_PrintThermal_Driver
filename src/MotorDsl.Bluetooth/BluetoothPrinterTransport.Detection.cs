@@ -13,14 +13,7 @@ namespace MotorDsl.Bluetooth;
 /// </summary>
 public partial class BluetoothPrinterTransport
 {
-    // Flow control: cada cuantos bloques consultar el status. 1 = antes de cada bloque; se puede
-    // subir para reducir latencia a costa de menos gating.
-    private const int POLL_EVERY_N_CHUNKS = 1;
-    // Cuantas veces reintentar el status esperando Ready antes de escribir igual (no deadlock).
-    private const int MAX_READY_POLLS = 10;
-    // Delay corto entre polls de status mientras la impresora reporta Busy.
-    private const int READY_POLL_DELAY_MS = 50;
-    // Timeout acotado de cada consulta de status (300-400ms): el envio nunca cuelga por polling.
+    // Timeout acotado de cada consulta de status (300-400ms): el sondeo previo nunca cuelga.
     private const int STATUS_TIMEOUT_MS = 350;
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -113,39 +106,13 @@ public partial class BluetoothPrinterTransport
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // Flow control por status (fase 3).
+    // Estado de hardware ANTES del envio.
+    //
+    // Aca NO hay sondeo por bloque: los comandos DLE son de tiempo real y hay firmwares que los
+    // responden PERO ademas los consumen como datos, con lo que intercalarlos dentro de un GS v 0
+    // desincroniza el raster (caso 13-Impresion-Logo). El unico lugar seguro para preguntarle algo
+    // a la impresora es fuera de toda carga util: antes de empezar a enviar.
     // ─────────────────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Consulta el estado real: DrainInput, envia DLE EOT n=1 y parsea 1 byte. El WRITE del comando
-    /// NO se traga: si el socket esta muerto, la IOException sube y WriteBytesAsync invalida +
-    /// reconecta ANTES de escribir el bloque a ciegas. La LECTURA si es best-effort: si falla o
-    /// expira, ParseStatusByte(null) devuelve Unknown (degrada, no aborta).
-    /// </summary>
-    private async Task<PrinterStatus> QueryStatusAsync(int timeoutMs, CancellationToken ct)
-    {
-        DrainInput();
-        await WriteRawAsync(new byte[] { 0x10, 0x04, 0x01 }, ct); // DLE EOT n=1
-        var b = await ReadStatusByteAsync(timeoutMs);
-        return ParseStatusByte(b);
-    }
-
-    /// <summary>
-    /// Poll de QueryStatusAsync hasta Ready o hasta MAX_READY_POLLS. Ready -> Ready; sigue Busy tras
-    /// los reintentos -> Busy (se escribira igual, con pacing de respaldo); status ilegible ->
-    /// Unknown (degradar al pacing fijo por el resto del envio).
-    /// </summary>
-    private async Task<PrinterStatus> WaitUntilReadyAsync(CancellationToken ct)
-    {
-        for (int poll = 0; poll < MAX_READY_POLLS; poll++)
-        {
-            var status = await QueryStatusAsync(STATUS_TIMEOUT_MS, ct);
-            if (status == PrinterStatus.Unknown) return PrinterStatus.Unknown; // ilegible -> degradar
-            if (status == PrinterStatus.Ready) return PrinterStatus.Ready;
-            await Task.Delay(READY_POLL_DELAY_MS, ct); // Busy: esperar y reintentar
-        }
-        return PrinterStatus.Busy; // sigue Busy tras MAX_READY_POLLS: no deadlockear, escribir igual
-    }
 
     /// <summary>
     /// Fast-fail SOLO ante señal inequivoca de fin de papel o tapa abierta (DLE EOT n=4 sensor de
