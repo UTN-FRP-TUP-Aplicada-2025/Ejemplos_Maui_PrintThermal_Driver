@@ -51,10 +51,11 @@ public class TableNodeEscPosTests
         // Starts with ESC @ (Init)
         Assert.Equal(0x1B, bytes[0]);
         Assert.Equal(0x40, bytes[1]);
-        // Ends with GS V 0 (Cut)
+        // Ends with GS V 1 (corte PARCIAL, default desde 1.0.17: el total arrastra 12-13 cm
+        // de papel en las térmicas sin cortadora — ver EscPosCommands.EndOfTicket)
         Assert.Equal(0x1D, bytes[^3]);
         Assert.Equal(0x56, bytes[^2]);
-        Assert.Equal(0x00, bytes[^1]);
+        Assert.Equal(0x01, bytes[^1]);
     }
 
     // ─── TK-33-02: Tabla contiene ASCII de headers y datos ───

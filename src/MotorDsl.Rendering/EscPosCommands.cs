@@ -37,6 +37,36 @@ public static class EscPosCommands
     /// <summary>ESC d n — Feed n lines</summary>
     public static byte[] FeedLines(byte n) => new byte[] { 0x1B, 0x64, n };
 
+    // ─── Cola del ticket ───
+
+    /// <summary>Modo por defecto de <see cref="EndOfTicket"/> cuando el perfil no declara nada.</summary>
+    public const string DefaultEndOfTicket = "cut_partial";
+
+    /// <summary>
+    /// Bytes con los que se cierra el ticket, segun la capability <c>end_of_ticket</c> del
+    /// <c>DeviceProfile</c>: <c>"cut_partial"</c> (default), <c>"cut_full"</c>, <c>"feed"</c> o
+    /// <c>"none"</c>.
+    /// <para>
+    /// El default NO es el corte total. Medido en una MTP-II y una 58HB6, ninguna de las dos tiene
+    /// cortadora y <c>GS V 0</c> las hace avanzar <b>12-13 cm de papel en blanco en cada ticket</b>,
+    /// mientras que <c>GS V 1</c> corta al ras. Y ojo: que respondan tan distinto a dos variantes de
+    /// corte es la razon por la que esta capability nombra la COLA y no una supuesta "tiene
+    /// cortadora": en este hardware lo segundo no predice el comportamiento.
+    /// </para>
+    /// </summary>
+    /// <param name="mode">valor de la capability <c>end_of_ticket</c>; null o desconocido = default.</param>
+    /// <param name="feedLines">lineas a avanzar cuando <paramref name="mode"/> es <c>"feed"</c>.</param>
+    public static byte[] EndOfTicket(string? mode, int feedLines = 4) =>
+        (mode ?? DefaultEndOfTicket) switch
+        {
+            "cut_full" => CutFull,
+            "none" => Array.Empty<byte>(),
+            "feed" => feedLines > 0
+                        ? FeedLines((byte)Math.Clamp(feedLines, 1, 255))
+                        : Array.Empty<byte>(),
+            _ => CutPartial,   // "cut_partial" y cualquier valor no reconocido
+        };
+
     // ─── Barcode EAN-13 — GS k ───
 
     /// <summary>GS k 2 — Print barcode EAN-13 (mode 2, NUL-terminated)</summary>

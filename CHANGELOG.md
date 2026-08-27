@@ -9,6 +9,67 @@ versión de los paquetes se inyecta en build/pack vía `-p:PackageVersion` /
 que el número de versión **no** vive en los `.csproj`.
 
 
+## [1.0.17] - 2026-08-27
+
+### Cambiado
+
+- **⚠ La cola del ticket ya no es el corte total (`GS V 0`), sino el corte parcial (`GS V 1`).**
+  Es un **cambio de comportamiento** para todos los consumidores.
+
+  `GS V 0` hace que las térmicas **sin cortadora** avancen **12-13 cm de papel en blanco en cada
+  ticket**. Reproducido en una `MTP-II` y una `58HB6`, y aislado con dos tickets idénticos salvo la
+  cola: con `GS V 0` arrastra el papel; sin comando de cola corta al ras. `GS V 1` corta al ras
+  igual, y es el que quedó como default.
+
+  Se descartó por medición que dependiera del largo del ticket: el documento termina siempre igual
+  y `EscPosCommands.FeedLines` estaba definido pero sin usar. Arrastraba **siempre**; en los
+  tickets cortos se notaba menos.
+
+  El default se eligió por **asimetría del daño**: con el nuevo, una impresora que *sí* tenga
+  cortadora total corta parcial y se separa a mano — molesto y **visible**. Con el viejo, una sin
+  cortadora tira 13 cm de papel por ticket **en silencio**. El primer error se nota y se corrige;
+  el segundo no.
+
+  Quien quiera el comportamiento anterior lo declara en el `DeviceProfile`:
+  `profile.SetCapability("end_of_ticket", "cut_full")`.
+
+### Añadido
+
+- **`end_of_ticket` en el `DeviceProfile`**: `"cut_partial"` (default), `"cut_full"`, `"feed"` o
+  `"none"`, más `end_feed_lines` (default 4) para el modo `"feed"`. La consumen los dos renderers
+  ESC/POS a través de `EscPosCommands.EndOfTicket(...)`.
+
+  Va en `DeviceProfile` y no en `PrinterProfile` porque la cola la emite el **renderer**: el
+  primero describe **qué y cómo se renderiza**, el segundo las **temporizaciones del envío**.
+
+  La capability nombra la **cola** y no una supuesta «tiene cortadora» porque, medido, eso último
+  no predice el comportamiento: la misma impresora sin cortadora responde muy distinto a `GS V 0`
+  (arrastra) que a `GS V 1` (corta al ras).
+
+- **Confirmación de impresión (barrera de drenaje) en el transport Bluetooth.** Tras enviar el
+  documento se emite `GS I 67` —comando **encolado**— y se espera su respuesta, que llega recién
+  cuando la impresora terminó de imprimir; en una térmica, procesar es imprimir.
+
+  Resuelve el **éxito falso**: que `Write` vuelva sin error sólo significa que el stack Bluetooth
+  aceptó los bytes. Si la impresora se queda **sin energía** con el documento ya en su buffer, el
+  ticket sale por la mitad y el envío figuraba como exitoso. El `WriteTimeout` de 1.0.16 **no**
+  cubre ese caso, porque no llega a bloquearse ninguna escritura.
+
+  Medido en un `moto g42` con 62 líneas: la escritura tarda ~47 ms y la respuesta llega a los
+  **4 167 ms** (`MTP-II`) y **3 540 ms** (`58HB6`) — el tiempo real de impresión.
+
+  Se controla con `PrinterProfile.ConfirmPrintTimeoutMs` (default **120 s**, `0` la desactiva). No
+  es una espera fija: sólo acota el peor caso. **Sólo se le exige a las impresoras que respondieron
+  el `GS I` de la detección de capacidades**; si el firmware no contesta ese comando, el envío se
+  comporta como antes.
+
+- **`PrintNotConfirmedException`**, clasificada como `PrintErrorType.Protocol`, que el handler por
+  defecto **NO reintenta**: el documento pudo imprimirse parcialmente y reimprimir solo gastaría
+  rollo y podría duplicar un comprobante. La decisión de reimprimir queda en el operador.
+
+> Diagnóstico, mediciones y evidencia en el repositorio de documentación de `GDA.Core.APP`:
+> `PROMPTs/Fixs/13-Impresion-Logo/` (§10.7 barrera, §10.8 y §10.9 cola del ticket).
+
 ## [1.0.16] - 2026-08-26
 
 ### Corregido
@@ -193,6 +254,7 @@ que el número de versión **no** vive en los `.csproj`.
   `BitmapEscPosRenderer` que volcaban parte del base64 de la imagen a la salida
   estándar en cada render.
 
+[1.0.17]: https://github.com/hdcm-dev/ThermalPrint.MotorDsl.Core/releases/tag/v1.0.17
 [1.0.16]: https://github.com/hdcm-dev/ThermalPrint.MotorDsl.Core/releases/tag/v1.0.16
 [1.0.15]: https://github.com/hdcm-dev/ThermalPrint.MotorDsl.Core/releases/tag/v1.0.15
 [1.0.13]: https://github.com/hdcm-dev/ThermalPrint.MotorDsl.Core/releases/tag/v1.0.13
