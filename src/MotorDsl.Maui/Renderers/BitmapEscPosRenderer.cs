@@ -113,7 +113,12 @@ public class BitmapEscPosRenderer : IRenderer
                 }
             }
 
-            buffer.AddRange(EscPosCommands.CutFull);
+            // Cola del ticket segun el perfil (default: corte parcial, NO corte total: ver
+            // EscPosCommands.EndOfTicket).
+            buffer.AddRange(EscPosCommands.EndOfTicket(
+                profile.GetCapability("end_of_ticket") as string,
+                Convert.ToInt32(profile.GetCapability("end_feed_lines") ?? 4)));
+
             result.Output = buffer.ToArray();
             return result;
         }

@@ -21,6 +21,23 @@ public class PrinterProfile
     /// </summary>
     public int WriteTimeoutMs { get; set; } = 10_000;
 
+    /// <summary>
+    /// Tope de espera de la <b>confirmacion de impresion</b>: tras enviar el documento se emite un
+    /// comando encolado y se espera su respuesta, que llega recien cuando la impresora termino de
+    /// imprimir. Distingue «se envio» de «se imprimio» — sin esto, una impresora que se queda sin
+    /// energia con el documento ya en su buffer produce un exito falso.
+    /// <para>
+    /// No es una espera fija: normalmente la respuesta llega apenas termina de imprimir (medido:
+    /// ~4 s para 62 lineas). Este valor solo acota el peor caso, por eso es holgado. En <b>0</b> se
+    /// desactiva la confirmacion.
+    /// </para>
+    /// <para>
+    /// Solo se aplica si la impresora respondio al <c>GS I</c> de la deteccion de capacidades; si
+    /// no contesta ese comando, no se le exige confirmacion y el envio se comporta como antes.
+    /// </para>
+    /// </summary>
+    public int ConfirmPrintTimeoutMs { get; set; } = 120_000;
+
     public static PrinterProfile Thermal58mm => new()
     {
         Name = "thermal_58mm",

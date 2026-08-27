@@ -42,6 +42,7 @@ public class PrintError
         var type = ex switch
         {
             PrinterHardwareException => PrintErrorType.Hardware,
+            PrintNotConfirmedException => PrintErrorType.Protocol,
             System.IO.IOException => PrintErrorType.Connection,
             System.Net.Sockets.SocketException => PrintErrorType.Connection,
             TimeoutException => PrintErrorType.Timeout,

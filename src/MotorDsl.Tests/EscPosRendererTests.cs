@@ -91,11 +91,29 @@ public class EscPosRendererTests
         var result = renderer.Render(layouted, EscPosProfile());
         var bytes = (byte[])result.Output!;
 
-        Assert.True(bytes.Length >= 3, "Debe tener al menos init + cut");
-        // GS V m — últimos 3 bytes: 0x1D, 0x56, m (0x00 = corte total)
+        Assert.True(bytes.Length >= 3, "Debe tener al menos init + cola");
+        // GS V m — últimos 3 bytes: 0x1D, 0x56, m.
+        // m = 0x01 (corte PARCIAL) es el default desde 1.0.17: el corte total (0x00) hace avanzar
+        // 12-13 cm de papel en las térmicas sin cortadora. Ver EscPosCommands.EndOfTicket.
         Assert.Equal(0x1D, bytes[^3]); // GS
         Assert.Equal(0x56, bytes[^2]); // V
-        Assert.Equal(0x00, bytes[^1]); // corte total
+        Assert.Equal(0x01, bytes[^1]); // corte parcial (default)
+    }
+
+    // ─── 5.b El perfil puede pedir explícitamente el corte total ───
+    [Fact]
+    public void Render_ConEndOfTicketCutFull_TerminaEnCorteTotal()
+    {
+        var renderer = new EscPosRenderer();
+        var layouted = Layout(new TextNode("Ticket"));
+        var profile = EscPosProfile();
+        profile.SetCapability("end_of_ticket", "cut_full");
+
+        var bytes = (byte[])renderer.Render(layouted, profile).Output!;
+
+        Assert.Equal(0x1D, bytes[^3]);
+        Assert.Equal(0x56, bytes[^2]);
+        Assert.Equal(0x00, bytes[^1]); // corte total, pedido por el perfil
     }
 
     // ─── 6. RenderResult.IsSuccessful == true en caso feliz ───

@@ -292,6 +292,13 @@ public partial class BluetoothPrinterTransport : IThermalPrinterTransport
             }
 
             await Task.Delay(profile.FinalDelayMs, ct);
+
+            // Confirmacion de impresion (barrera). Va DESPUES del documento, o sea fuera de toda
+            // carga util, que es la unica posicion segura para preguntarle algo a la impresora.
+            // Solo se exige a las que respondieron el GS I de la deteccion: si el firmware no
+            // contesta ese comando, no se le puede pedir confirmacion y el envio queda como antes.
+            if (profile.ConfirmPrintTimeoutMs > 0 && !string.IsNullOrEmpty(Capabilities?.ModelId))
+                await ConfirmarImpresionAsync(profile.ConfirmPrintTimeoutMs, ct);
         }
         catch (TimeoutException)
         {

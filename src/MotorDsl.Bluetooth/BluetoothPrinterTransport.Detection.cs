@@ -141,6 +141,33 @@ public partial class BluetoothPrinterTransport
         }
     }
 
+    /// <summary>
+    /// Barrera de drenaje: emite <c>GS I 67</c> —un comando <b>encolado</b>— y espera su respuesta.
+    /// Como se procesa en orden, la respuesta llega recien cuando la impresora termino con todo lo
+    /// anterior; y en una termica, procesar es imprimir. Es lo que convierte «se envio» en
+    /// «se imprimio».
+    /// <para>
+    /// Medido en un moto g42 con un documento de 62 lineas: la escritura tarda ~47 ms y la
+    /// respuesta llega a los 4 167 ms (MTP-II) / 3 540 ms (58HB6).
+    /// </para>
+    /// <para>
+    /// Se llama SIEMPRE fuera de la carga util (despues del documento entero). Si no llega
+    /// respuesta dentro del tope, lanza <see cref="PrintNotConfirmedException"/>, que se clasifica
+    /// como <c>Protocol</c> y por lo tanto NO se reintenta sola.
+    /// </para>
+    /// </summary>
+    private async Task ConfirmarImpresionAsync(int timeoutMs, CancellationToken ct)
+    {
+        DrainInput();
+        await WriteRawAsync(new byte[] { 0x1D, 0x49, 0x43 }, ct); // GS I 67 (encolado)
+
+        var respuesta = await ReadAvailableAsync(24, timeoutMs);
+        if (respuesta is null || respuesta.Length == 0)
+            throw new PrintNotConfirmedException(
+                $"La impresora no confirmo la impresion en {timeoutMs} ms. El documento se envio " +
+                "completo, pero no hay garantia de que se haya impreso.");
+    }
+
     // ─────────────────────────────────────────────────────────────────────────────
     // Helpers de I/O: escritura cruda y lecturas gateadas por Available() (no bloquean).
     // ─────────────────────────────────────────────────────────────────────────────
